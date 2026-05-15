@@ -1,0 +1,462 @@
+/**
+ * Cookie Monster — PerryLabs Cookie Notice
+ * Front-end styles for consent banner, preferences panel, overlay, and blocked embeds.
+ */
+
+/* ------------------------------------------------------------------ */
+/*  Theme variables — overridden inline / by [data-plcn-theme]         */
+/* ------------------------------------------------------------------ */
+:root {
+    --plcn-bg:        #111;
+    --plcn-fg:        #fff;
+    --plcn-fg-muted:  rgba(255, 255, 255, 0.78);
+    --plcn-accent:    #ffb25d;
+    --plcn-pref-bg:   #fff;
+    --plcn-pref-fg:   #1d2327;
+    --plcn-pref-muted:#646970;
+    --plcn-pref-border:#e2e4e7;
+}
+
+[data-plcn-theme="dark"] {
+    --plcn-pref-bg:   #1d2327;
+    --plcn-pref-fg:   #f0f0f1;
+    --plcn-pref-muted:#a7aaad;
+    --plcn-pref-border:#2c3338;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-plcn-theme="auto"] {
+        --plcn-pref-bg:   #1d2327;
+        --plcn-pref-fg:   #f0f0f1;
+        --plcn-pref-muted:#a7aaad;
+        --plcn-pref-border:#2c3338;
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Reset & shared                                                     */
+/* ------------------------------------------------------------------ */
+#plcn-banner,
+#plcn-banner *,
+#plcn-preferences,
+#plcn-preferences *,
+#plcn-overlay-backdrop,
+.plcn-embed-wrap,
+.plcn-embed-wrap * {
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Overlay backdrop                                                   */
+/* ------------------------------------------------------------------ */
+#plcn-overlay-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 99998;
+}
+#plcn-overlay-backdrop.plcn-active {
+    display: block;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Banner — base                                                      */
+/* ------------------------------------------------------------------ */
+#plcn-banner {
+    display: none;
+    position: fixed;
+    left: 0;
+    right: 0;
+    z-index: 99999;
+    color: #fff;
+    transition: transform 0.35s ease, opacity 0.35s ease;
+}
+#plcn-banner.plcn-active {
+    display: block;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Banner positions                                                   */
+/* ------------------------------------------------------------------ */
+#plcn-banner.plcn-pos-bottom {
+    bottom: 0;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.25);
+}
+#plcn-banner.plcn-pos-top {
+    top: 0;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
+#plcn-banner.plcn-pos-overlay {
+    top: 50%;
+    left: 50%;
+    right: auto;
+    transform: translate(-50%, -50%);
+    max-width: 540px;
+    width: 92%;
+    border-radius: 12px;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Banner inner                                                       */
+/* ------------------------------------------------------------------ */
+.plcn-banner-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 16px 20px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+#plcn-banner.plcn-pos-overlay .plcn-banner-inner {
+    flex-direction: column;
+    text-align: center;
+    padding: 28px 24px;
+}
+
+.plcn-banner-message {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    flex: 1;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Buttons                                                            */
+/* ------------------------------------------------------------------ */
+.plcn-banner-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+#plcn-banner.plcn-pos-overlay .plcn-banner-actions {
+    justify-content: center;
+}
+
+.plcn-btn {
+    border: 0;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+    transition: opacity 0.2s, background 0.2s;
+    line-height: 1;
+}
+.plcn-btn:hover {
+    opacity: 0.88;
+}
+
+.plcn-btn-primary {
+    /* colors set inline via data attributes */
+}
+
+/* Reject button shares primary sizing/weight for equal prominence (EU compliance). */
+.plcn-btn-reject {
+    /* style set inline so it matches the configured accent color */
+}
+
+.plcn-btn-link {
+    background: none;
+    border: 0;
+    color: rgba(255, 255, 255, 0.75);
+    padding: 10px 8px;
+    text-decoration: underline;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 400;
+}
+.plcn-btn-link:hover {
+    color: #fff;
+}
+
+.plcn-btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Preferences panel                                                  */
+/* ------------------------------------------------------------------ */
+#plcn-preferences {
+    display: none;
+    position: fixed;
+    z-index: 100000;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 92%;
+    max-width: 520px;
+    max-height: 85vh;
+    overflow-y: auto;
+    background: var(--plcn-pref-bg);
+    color: var(--plcn-pref-fg);
+    border-radius: 12px;
+    box-shadow: 0 16px 56px rgba(0, 0, 0, 0.35);
+    padding: 0;
+}
+#plcn-preferences.plcn-active {
+    display: block;
+}
+
+.plcn-prefs-header {
+    padding: 20px 24px 12px;
+    border-bottom: 1px solid var(--plcn-pref-border);
+}
+.plcn-prefs-header h3 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 700;
+}
+.plcn-prefs-header p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--plcn-pref-muted);
+    line-height: 1.45;
+}
+
+.plcn-prefs-body {
+    padding: 8px 24px 16px;
+}
+
+/* Category row */
+.plcn-category {
+    padding: 14px 0;
+    border-bottom: 1px solid #f0f0f1;
+}
+.plcn-category:last-child {
+    border-bottom: 0;
+}
+
+.plcn-category-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.plcn-category-info {
+    flex: 1;
+}
+
+.plcn-category-name {
+    font-weight: 600;
+    font-size: 14px;
+    display: block;
+}
+
+.plcn-category-desc {
+    font-size: 12px;
+    color: var(--plcn-pref-muted);
+    margin-top: 2px;
+    display: block;
+    line-height: 1.4;
+}
+
+.plcn-category-scripts {
+    font-size: 11px;
+    color: #888;
+    margin-top: 4px;
+    display: block;
+}
+
+/* Toggle switch */
+.plcn-toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+.plcn-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+.plcn-toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: #ccd0d4;
+    border-radius: 24px;
+    cursor: pointer;
+    transition: background 0.25s;
+}
+.plcn-toggle-slider::before {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    top: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.25s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.plcn-toggle input:checked + .plcn-toggle-slider {
+    background: #2271b1;
+}
+.plcn-toggle input:checked + .plcn-toggle-slider::before {
+    transform: translateX(20px);
+}
+.plcn-toggle input:disabled + .plcn-toggle-slider {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* Preferences footer */
+.plcn-prefs-footer {
+    padding: 14px 24px;
+    border-top: 1px solid var(--plcn-pref-border);
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.plcn-prefs-footer .plcn-btn {
+    font-size: 13px;
+}
+
+.plcn-btn-save {
+    background: #2271b1;
+    color: #fff;
+}
+.plcn-btn-save:hover {
+    background: #135e96;
+}
+
+.plcn-btn-cancel {
+    background: var(--plcn-pref-border);
+    color: var(--plcn-pref-fg);
+}
+.plcn-btn-cancel:hover {
+    opacity: 0.85;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Blocked embed placeholder                                          */
+/* ------------------------------------------------------------------ */
+.plcn-embed-wrap {
+    position: relative;
+    margin: 1em 0;
+}
+.plcn-embed-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 32px 20px;
+    border: 1px dashed #c3c4c7;
+    border-radius: 12px;
+    background: #f6f7f7;
+    color: #1d2327;
+    text-align: center;
+    min-height: 200px;
+}
+.plcn-embed-message {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    max-width: 36ch;
+}
+.plcn-embed-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.plcn-embed-load,
+.plcn-embed-prefs {
+    border: 0;
+    padding: 9px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+}
+.plcn-embed-load {
+    background: #14213D;
+    color: #fff;
+}
+.plcn-embed-load:hover {
+    background: #0F1B2E;
+}
+.plcn-embed-prefs {
+    background: transparent;
+    color: #14213D;
+    text-decoration: underline;
+    font-weight: 400;
+}
+.plcn-embed-iframe-holder iframe {
+    display: block;
+    max-width: 100%;
+    border-radius: 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Cookie policy shortcode                                            */
+/* ------------------------------------------------------------------ */
+.plcn-cookie-policy .plcn-policy-cat {
+    margin: 1.5em 0 0.25em;
+    font-size: 16px;
+    font-weight: 700;
+}
+.plcn-cookie-policy .plcn-policy-cat-desc {
+    margin: 0 0 0.75em;
+    color: #555;
+    font-size: 14px;
+}
+.plcn-policy-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5em;
+    font-size: 14px;
+}
+.plcn-policy-table th,
+.plcn-policy-table td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--plcn-pref-border);
+}
+.plcn-policy-table th {
+    background: #f6f7f7;
+    font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Responsive                                                         */
+/* ------------------------------------------------------------------ */
+@media (max-width: 600px) {
+    .plcn-banner-inner {
+        flex-direction: column;
+        text-align: center;
+        padding: 14px 16px;
+    }
+    .plcn-banner-actions {
+        justify-content: center;
+        width: 100%;
+    }
+    .plcn-btn {
+        flex: 1;
+        min-width: 0;
+        text-align: center;
+    }
+    #plcn-preferences {
+        width: 96%;
+        max-height: 90vh;
+    }
+    .plcn-prefs-header,
+    .plcn-prefs-body,
+    .plcn-prefs-footer {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}

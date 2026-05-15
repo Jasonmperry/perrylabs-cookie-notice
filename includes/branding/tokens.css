@@ -1,0 +1,121 @@
+/* synced from _ops/branding 2026-05-15 — re-run sync.sh to update */
+/**
+ * PerryLabs Design Tokens
+ *
+ * Single source of truth for color and typography across plugins.
+ * Copy this file into your plugin and load it in admin contexts.
+ *
+ * Source of truth: /_ops/branding/tokens.css
+ * Version: 1.0.0
+ */
+
+:root {
+    /* Brand colors */
+    --pl-navy:        #0A1628;
+    --pl-dark-blue:   #0F1B2E;
+    --pl-deep-blue:   #14213D;
+    --pl-deepest:     #080F23;
+    --pl-graphite:    #2B2D42;
+    --pl-aqua:        #00B4D8;
+    --pl-magenta:     #E63946;
+    --pl-off-white:   #F8F9FA;
+
+    /* Neutral scale (matches WP admin where reasonable) */
+    --pl-neutral-50:  #F6F7F7;
+    --pl-neutral-100: #F0F0F1;
+    --pl-neutral-200: #DCDCDE;
+    --pl-neutral-300: #C3C4C7;
+    --pl-neutral-400: #A7AAAD;
+    --pl-neutral-500: #8C8F94;
+    --pl-neutral-600: #646970;
+    --pl-neutral-700: #50575E;
+    --pl-neutral-800: #2C3338;
+    --pl-neutral-900: #1D2327;
+
+    /* Type stacks */
+    --pl-font-display: "Poppins", ui-sans-serif, system-ui, sans-serif;
+    --pl-font-sans: "Roboto Flex", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --pl-font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    /* Spacing scale */
+    --pl-space-1: 4px;
+    --pl-space-2: 8px;
+    --pl-space-3: 12px;
+    --pl-space-4: 16px;
+    --pl-space-5: 20px;
+    --pl-space-6: 24px;
+    --pl-space-8: 32px;
+
+    /* Radius */
+    --pl-radius-sm: 4px;
+    --pl-radius-md: 6px;
+    --pl-radius-lg: 12px;
+
+    /* Shadows */
+    --pl-shadow-sm: 0 1px 2px rgba(0,0,0,0.08);
+    --pl-shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+    --pl-shadow-lg: 0 12px 32px rgba(0,0,0,0.2);
+}
+
+/* Gradient utility */
+.pl-gradient {
+    background-image: linear-gradient(135deg, var(--pl-aqua) 0%, var(--pl-magenta) 100%);
+}
+.pl-gradient-text {
+    background-image: linear-gradient(135deg, var(--pl-aqua) 0%, var(--pl-magenta) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* Admin header */
+.pl-admin-header {
+    display: flex;
+    align-items: center;
+    gap: var(--pl-space-3);
+    margin-bottom: var(--pl-space-3);
+}
+.pl-admin-header img {
+    height: 32px;
+    width: auto;
+}
+.pl-admin-header h1 {
+    margin: 0;
+    font-family: var(--pl-font-display);
+    letter-spacing: -0.01em;
+}
+.pl-admin-header .pl-version {
+    font-size: 12px;
+    color: var(--pl-neutral-600);
+    font-family: var(--pl-font-mono);
+}
+
+/* Admin footer */
+.pl-admin-footer {
+    margin-top: var(--pl-space-5);
+    padding-top: var(--pl-space-4);
+    border-top: 1px solid var(--pl-neutral-300);
+    text-align: right;
+    font-size: 13px;
+    color: var(--pl-neutral-700);
+}
+.pl-admin-footer a {
+    color: var(--pl-neutral-700);
+    text-decoration: none;
+}
+.pl-admin-footer a:hover {
+    color: var(--pl-aqua);
+}
+.pl-admin-footer .pl-built-by {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--pl-space-2);
+}
+.pl-admin-footer .pl-built-by img {
+    height: 20px;
+    width: auto;
+}
+.pl-admin-footer .pl-sep {
+    margin: 0 var(--pl-space-2);
+    color: var(--pl-neutral-300);
+}

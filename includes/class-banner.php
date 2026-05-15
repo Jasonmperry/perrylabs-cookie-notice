@@ -126,6 +126,12 @@ gtag('consent','default',{
             return;
         }
 
+        // Skip for admins by default — the WP login flow doesn't preserve front-end
+        // cookies, so admins re-see the banner on every login.
+        if ( ! empty( $options['skip_for_admins'] ) && is_user_logged_in() && current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
         $message      = $options['message'] ?? '';
         $button_text  = $options['button_text'] ?? 'Got it';
         $bg_color     = $options['bg_color'] ?? '#111';

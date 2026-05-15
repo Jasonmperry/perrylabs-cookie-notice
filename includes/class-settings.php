@@ -44,6 +44,7 @@ class PLCN_Settings {
             'gated_scripts'          => array(),
             'gated_styles'           => array(),
             'embed_blocker'          => array(),
+            'skip_for_admins'        => 1,
         );
     }
 
@@ -101,6 +102,7 @@ class PLCN_Settings {
         $sanitized['google_consent_mode']    = ! empty( $input['google_consent_mode'] ) ? 1 : 0;
         $sanitized['google_consent_wait_ms'] = max( 0, min( 5000, absint( $input['google_consent_wait_ms'] ?? 500 ) ) );
         $sanitized['log_consent']            = ! empty( $input['log_consent'] ) ? 1 : 0;
+        $sanitized['skip_for_admins']        = ! empty( $input['skip_for_admins'] ) ? 1 : 0;
 
         // Embed blocker — array of provider keys.
         $allowed_providers = array_keys( PLCN_Embed_Blocker::PROVIDERS );
@@ -374,6 +376,14 @@ class PLCN_Settings {
                 <tr>
                     <th scope="row"><label for="plcn_expiry_days"><?php esc_html_e( 'Consent Lifetime (days)', 'perrylabs-cookie-notice' ); ?></label></th>
                     <td><input type="number" id="plcn_expiry_days" name="plcn_options[expiry_days]" value="<?php echo esc_attr( $options['expiry_days'] ?? 365 ); ?>" min="1" class="small-text" /></td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="plcn_skip_for_admins"><?php esc_html_e( 'Skip for admins', 'perrylabs-cookie-notice' ); ?></label></th>
+                    <td>
+                        <input type="checkbox" id="plcn_skip_for_admins" name="plcn_options[skip_for_admins]" value="1" <?php checked( 1, $options['skip_for_admins'] ?? 1 ); ?> />
+                        <label for="plcn_skip_for_admins"><?php esc_html_e( 'Hide the banner from logged-in admin users', 'perrylabs-cookie-notice' ); ?></label>
+                        <p class="description"><?php esc_html_e( 'The WordPress login flow does not preserve front-end cookies, so admins otherwise see the banner on every login. Non-admin logged-in users still see it.', 'perrylabs-cookie-notice' ); ?></p>
+                    </td>
                 </tr>
             </table>
 

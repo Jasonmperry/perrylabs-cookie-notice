@@ -4,7 +4,7 @@ Tags: cookies, consent, gdpr, ccpa, privacy, google consent mode, cookie banner
 Requires at least: 5.8
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 3.1.0
+Stable tag: 3.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -84,6 +84,9 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 
 == Changelog ==
 
+= 3.1.1 =
+* New: "Skip for admins" setting (default on) — hides the banner from logged-in admin users, since the WP login flow doesn't preserve front-end cookies and admins otherwise re-see the banner on every login. Non-admin logged-in users still see it.
+
 = 3.1.0 =
 * New: Embed blocker for YouTube, Vimeo, Google Maps, X/Twitter, Facebook, Instagram, SoundCloud, Spotify. Replaces iframes with a click-to-load placeholder until consent is granted; auto-loads once the relevant category is consented to.
 * New: Smart preset ID field — one "Your service ID" input substitutes into the preset snippet on save. No more hand-editing `%s` placeholders.
@@ -114,6 +117,9 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 * Initial release — simple implied-consent notice.
 
 == Upgrade Notice ==
+
+= 3.1.1 =
+Adds a "skip for admins" toggle so logged-in admins don't see the banner on every login (WP's login flow doesn't preserve front-end cookies).
 
 = 3.1.0 =
 Adds iframe embed blocking (YouTube/Vimeo/Maps/X/FB/IG/SoundCloud/Spotify), smart preset ID substitution, WP color picker, light/dark theme, and a Tools tab. Settings are preserved.

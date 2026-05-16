@@ -60,21 +60,21 @@ class PLCN_Shortcodes {
         $all      = $registry->get_all();
 
         if ( empty( $all ) ) {
-            return '<p class="plcn-policy-empty">' . esc_html__( 'No third-party cookies are configured on this site.', 'perrylabs-cookie-notice' ) . '</p>';
+            return '<p class="plcn-policy-empty">' . esc_html( PLCN_Strings::get( 'policy_empty' ) ) . '</p>';
         }
 
         $cat_labels = array(
-            'required'  => __( 'Strictly Necessary', 'perrylabs-cookie-notice' ),
-            'analytics' => __( 'Analytics', 'perrylabs-cookie-notice' ),
-            'marketing' => __( 'Marketing', 'perrylabs-cookie-notice' ),
-            'other'     => __( 'Other', 'perrylabs-cookie-notice' ),
+            'required'  => PLCN_Strings::get( 'policy_required' ),
+            'analytics' => PLCN_Strings::get( 'policy_analytics' ),
+            'marketing' => PLCN_Strings::get( 'policy_marketing' ),
+            'other'     => PLCN_Strings::get( 'policy_other' ),
         );
 
         $cat_descs = array(
-            'required'  => __( 'Required for the website to function. Always active.', 'perrylabs-cookie-notice' ),
-            'analytics' => __( 'Used to measure and understand how visitors use the site.', 'perrylabs-cookie-notice' ),
-            'marketing' => __( 'Used to deliver relevant advertising and track campaign performance.', 'perrylabs-cookie-notice' ),
-            'other'     => __( 'Third-party services not covered above.', 'perrylabs-cookie-notice' ),
+            'required'  => PLCN_Strings::get( 'policy_required_desc' ),
+            'analytics' => PLCN_Strings::get( 'policy_analytics_desc' ),
+            'marketing' => PLCN_Strings::get( 'policy_marketing_desc' ),
+            'other'     => PLCN_Strings::get( 'policy_other_desc' ),
         );
 
         $by_cat = array();
@@ -96,8 +96,8 @@ class PLCN_Shortcodes {
                 <table class="plcn-policy-table">
                     <thead>
                         <tr>
-                            <th><?php esc_html_e( 'Service', 'perrylabs-cookie-notice' ); ?></th>
-                            <th><?php esc_html_e( 'Provider', 'perrylabs-cookie-notice' ); ?></th>
+                            <th><?php echo esc_html( PLCN_Strings::get( 'policy_col_service' ) ); ?></th>
+                            <th><?php echo esc_html( PLCN_Strings::get( 'policy_col_provider' ) ); ?></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -124,7 +124,7 @@ class PLCN_Shortcodes {
     public function ccpa_optout( $atts ): string {
         $atts = shortcode_atts(
             array(
-                'text'  => __( 'Do Not Sell My Personal Information', 'perrylabs-cookie-notice' ),
+                'text'  => PLCN_Strings::get( 'ccpa_optout_label' ),
                 'class' => '',
             ),
             $atts,

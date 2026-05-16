@@ -28,6 +28,7 @@ class PLCN_Consent_Log {
     private function __construct() {
         add_action( 'wp_ajax_nopriv_plcn_record_consent', array( $this, 'ajax_record' ) );
         add_action( 'wp_ajax_plcn_record_consent', array( $this, 'ajax_record' ) );
+        add_action( 'admin_post_plcn_export_log', array( $this, 'stream_csv' ) );
     }
 
     public static function table_name(): string {
@@ -126,6 +127,33 @@ class PLCN_Consent_Log {
         global $wpdb;
         $table = self::table_name();
         return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+    }
+
+    /**
+     * Stream the entire log as CSV to the browser (downloads as a file).
+     * Called from the admin "Export CSV" button.
+     */
+    public function stream_csv(): void {
+        if ( ! current_user_can( plcn_manage_capability() ) ) {
+            wp_die( 'Forbidden', 403 );
+        }
+        check_admin_referer( 'plcn_export_log' );
+
+        global $wpdb;
+        $table = self::table_name();
+        $rows  = $wpdb->get_results( "SELECT * FROM {$table} ORDER BY id DESC", ARRAY_A );
+
+        nocache_headers();
+        header( 'Content-Type: text/csv; charset=UTF-8' );
+        header( 'Content-Disposition: attachment; filename="plcn-consent-log-' . gmdate( 'Y-m-d' ) . '.csv"' );
+
+        $out = fopen( 'php://output', 'w' );
+        fputcsv( $out, array( 'id', 'recorded_at', 'policy_version', 'categories', 'geo_region', 'ip_hash', 'ua_hash', 'action' ) );
+        foreach ( $rows as $row ) {
+            fputcsv( $out, $row );
+        }
+        fclose( $out );
+        exit;
     }
 
     private function get_client_ip(): string {

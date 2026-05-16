@@ -16,10 +16,28 @@
     var POLICY_VERSION  = parseInt(cfg.policyVersion, 10) || 1;
     var CONSENT_MODE_ON = !!cfg.googleConsentMode;
     var LOG_CONSENT     = !!cfg.logConsent;
+    var HONOR_DNT       = !!cfg.honorDnt;
     var AJAX_URL        = cfg.ajaxUrl        || '';
     var LOG_NONCE       = cfg.logNonce       || '';
     var CATEGORIES      = cfg.categories     || ['required', 'analytics', 'marketing', 'other'];
     var SCRIPTS_DATA    = cfg.scripts        || {};
+
+    // Synthetic reject-all consent (used when DNT/GPC is detected and honored).
+    function rejectAllConsent() {
+        return {
+            required: true,
+            analytics: false,
+            marketing: false,
+            other: false
+        };
+    }
+
+    function browserSaysNoTrack() {
+        if (!HONOR_DNT) return false;
+        if (navigator.doNotTrack === '1' || navigator.doNotTrack === 'yes') return true;
+        if (navigator.globalPrivacyControl === true) return true;
+        return false;
+    }
 
     /* ------------------------------------------------------------------ */
     /*  Cookie helpers                                                     */
@@ -388,6 +406,15 @@
     function boot(region) {
         var mode = getEffectiveMode(region);
         window._plcnEffectiveMode = mode;
+
+        // DNT / GPC honored → treat as Reject All. Don't show banner; don't
+        // load any optional scripts. Tell Google Consent Mode to deny.
+        if (browserSaysNoTrack()) {
+            var rejected = rejectAllConsent();
+            activateConsentedScripts(rejected, 'gdpr');
+            updateGoogleConsent(rejected);
+            return;
+        }
 
         // Already decided? Activate and exit.
         if (hasDecided()) {

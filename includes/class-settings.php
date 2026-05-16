@@ -2,7 +2,8 @@
 /**
  * PLCN_Settings — Admin settings page.
  *
- * Tabs: General, Scripts & Pixels, Gated Handles, Embed Blocker, Consent Log, Tools.
+ * Tabs: General | Messages | Scripts & Pixels | Gated Handles | Embed Blocker
+ *       | Advanced | Consent Log | Tools.
  *
  * @package PerryLabs\CookieNotice
  */
@@ -23,6 +24,8 @@ class PLCN_Settings {
         add_action( 'admin_init', array( $this, 'handle_gated_actions' ) );
         add_action( 'admin_init', array( $this, 'handle_admin_actions' ) );
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+        add_action( 'admin_post_plcn_import_settings', array( $this, 'handle_import' ) );
+        add_action( 'admin_post_plcn_export_settings', array( $this, 'handle_export' ) );
     }
 
     public static function defaults(): array {
@@ -45,6 +48,12 @@ class PLCN_Settings {
             'gated_styles'           => array(),
             'embed_blocker'          => array(),
             'skip_for_admins'        => 1,
+            // v3.2.0 additions
+            'privacy_policy_url'     => '',
+            'honor_dnt'              => 1,
+            'skip_urls'              => '',
+            'custom_css'             => '',
+            'strings'                => array(),
         );
     }
 
@@ -52,7 +61,7 @@ class PLCN_Settings {
         add_options_page(
             __( 'Cookie Notice', 'perrylabs-cookie-notice' ),
             __( 'Cookie Notice', 'perrylabs-cookie-notice' ),
-            'manage_options',
+            plcn_manage_capability(),
             self::PAGE_SLUG,
             array( $this, 'render_page' )
         );
@@ -69,7 +78,6 @@ class PLCN_Settings {
     public function enqueue_admin_assets( $hook ): void {
         if ( 'settings_page_' . self::PAGE_SLUG !== $hook ) return;
 
-        // PerryLabs tokens.
         wp_enqueue_style(
             'perrylabs-tokens',
             PL_COOKIE_PLUGIN_URL . 'includes/branding/tokens.css',
@@ -77,12 +85,18 @@ class PLCN_Settings {
             PL_COOKIE_VERSION
         );
 
-        // WP color picker.
+        // Live preview also needs the front-end stylesheet.
+        wp_enqueue_style(
+            'plcn-cookie-monster',
+            PL_COOKIE_PLUGIN_URL . 'assets/cookie-monster.css',
+            array(),
+            PL_COOKIE_VERSION
+        );
+
         wp_enqueue_style( 'wp-color-picker' );
         wp_enqueue_script( 'wp-color-picker' );
 
-        // Small inline init for color picker.
-        wp_add_inline_script( 'wp-color-picker', 'jQuery(function($){$(".plcn-color-field").wpColorPicker();});' );
+        wp_add_inline_script( 'wp-color-picker', 'jQuery(function($){$(".plcn-color-field").wpColorPicker({change:function(e,ui){if(window.plcnUpdatePreview)plcnUpdatePreview();}});});' );
     }
 
     public function sanitize( $input ): array {
@@ -103,15 +117,27 @@ class PLCN_Settings {
         $sanitized['google_consent_wait_ms'] = max( 0, min( 5000, absint( $input['google_consent_wait_ms'] ?? 500 ) ) );
         $sanitized['log_consent']            = ! empty( $input['log_consent'] ) ? 1 : 0;
         $sanitized['skip_for_admins']        = ! empty( $input['skip_for_admins'] ) ? 1 : 0;
+        $sanitized['honor_dnt']              = ! empty( $input['honor_dnt'] ) ? 1 : 0;
+        $sanitized['privacy_policy_url']     = esc_url_raw( $input['privacy_policy_url'] ?? '' );
+        $sanitized['skip_urls']              = sanitize_textarea_field( $input['skip_urls'] ?? '' );
+        $sanitized['custom_css']             = wp_strip_all_tags( $input['custom_css'] ?? '' );
 
-        // Embed blocker — array of provider keys.
+        // Strings — admin overrides for any string key.
+        $string_input = (array) ( $input['strings'] ?? array() );
+        $clean_strings = array();
+        foreach ( PLCN_Strings::defaults() as $key => $default ) {
+            if ( isset( $string_input[ $key ] ) ) {
+                $clean_strings[ $key ] = wp_kses_post( $string_input[ $key ] );
+            }
+        }
+        $sanitized['strings'] = $clean_strings;
+
         $allowed_providers = array_keys( PLCN_Embed_Blocker::PROVIDERS );
         $sanitized['embed_blocker'] = array_values( array_intersect(
             $allowed_providers,
             array_map( 'sanitize_key', (array) ( $input['embed_blocker'] ?? array() ) )
         ) );
 
-        // Preserve settings managed in other tabs.
         $sanitized['policy_version'] = (int) ( $existing['policy_version'] ?? 1 );
         $sanitized['scripts']        = $existing['scripts'] ?? array();
         $sanitized['gated_scripts']  = $existing['gated_scripts'] ?? array();
@@ -125,7 +151,7 @@ class PLCN_Settings {
     /* ============================================================== */
 
     public function handle_script_actions(): void {
-        if ( ! current_user_can( 'manage_options' ) ) return;
+        if ( ! current_user_can( plcn_manage_capability() ) ) return;
         if ( empty( $_GET['page'] ) || self::PAGE_SLUG !== $_GET['page'] ) return;
 
         if ( ! empty( $_GET['plcn_delete_script'] ) && ! empty( $_GET['_wpnonce'] ) ) {
@@ -144,7 +170,6 @@ class PLCN_Settings {
                 $src    = $_POST['script_src']    ?? '';
                 $inline = wp_unslash( $_POST['script_inline'] ?? '' );
 
-                // Smart preset ID substitution.
                 $service_id = sanitize_text_field( $_POST['script_service_id'] ?? '' );
                 if ( $service_id ) {
                     $src    = str_replace( '%s', $service_id, $src );
@@ -174,7 +199,7 @@ class PLCN_Settings {
     }
 
     public function handle_gated_actions(): void {
-        if ( ! current_user_can( 'manage_options' ) ) return;
+        if ( ! current_user_can( plcn_manage_capability() ) ) return;
         if ( empty( $_GET['page'] ) || self::PAGE_SLUG !== $_GET['page'] ) return;
 
         if ( ! empty( $_POST['plcn_save_gated'] ) && ! empty( $_POST['_wpnonce'] ) ) {
@@ -211,7 +236,7 @@ class PLCN_Settings {
     }
 
     public function handle_admin_actions(): void {
-        if ( ! current_user_can( 'manage_options' ) ) return;
+        if ( ! current_user_can( plcn_manage_capability() ) ) return;
         if ( empty( $_GET['page'] ) || self::PAGE_SLUG !== $_GET['page'] ) return;
 
         if ( ! empty( $_POST['plcn_bump_version'] ) && ! empty( $_POST['_wpnonce'] ) ) {
@@ -234,12 +259,57 @@ class PLCN_Settings {
         }
     }
 
+    /**
+     * Stream settings as a JSON download.
+     */
+    public function handle_export(): void {
+        if ( ! current_user_can( plcn_manage_capability() ) ) wp_die( 'Forbidden', 403 );
+        check_admin_referer( 'plcn_export_settings' );
+
+        $payload = array(
+            'plugin'  => 'perrylabs-cookie-notice',
+            'version' => PL_COOKIE_VERSION,
+            'options' => get_option( self::OPTION_NAME, array() ),
+        );
+
+        nocache_headers();
+        header( 'Content-Type: application/json; charset=UTF-8' );
+        header( 'Content-Disposition: attachment; filename="plcn-settings-' . gmdate( 'Y-m-d' ) . '.json"' );
+        echo wp_json_encode( $payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+        exit;
+    }
+
+    public function handle_import(): void {
+        if ( ! current_user_can( plcn_manage_capability() ) ) wp_die( 'Forbidden', 403 );
+        check_admin_referer( 'plcn_import_settings' );
+
+        if ( empty( $_FILES['plcn_settings_file']['tmp_name'] ) ) {
+            wp_safe_redirect( admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=tools&import_error=missing' ) );
+            exit;
+        }
+
+        $raw  = file_get_contents( $_FILES['plcn_settings_file']['tmp_name'] );
+        $data = json_decode( $raw, true );
+
+        if ( ! is_array( $data ) || empty( $data['options'] ) || ! is_array( $data['options'] ) ) {
+            wp_safe_redirect( admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=tools&import_error=invalid' ) );
+            exit;
+        }
+
+        // Run through sanitize() so we apply current schema rules.
+        $merged = wp_parse_args( $data['options'], self::defaults() );
+        update_option( self::OPTION_NAME, $this->sanitize( $merged ) );
+
+        wp_safe_redirect( admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=tools&imported=1' ) );
+        exit;
+    }
+
     /* ============================================================== */
     /*  Page renderer                                                  */
     /* ============================================================== */
 
     public function render_page(): void {
-        if ( ! current_user_can( 'manage_options' ) ) return;
+        if ( ! current_user_can( plcn_manage_capability() ) ) return;
 
         $options    = get_option( self::OPTION_NAME, self::defaults() );
         $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'general';
@@ -250,12 +320,14 @@ class PLCN_Settings {
             <nav class="nav-tab-wrapper" style="margin-bottom:16px;">
                 <?php
                 $tabs = array(
-                    'general' => __( 'General', 'perrylabs-cookie-notice' ),
-                    'scripts' => __( 'Scripts & Pixels', 'perrylabs-cookie-notice' ),
-                    'gated'   => __( 'Gated Handles', 'perrylabs-cookie-notice' ),
-                    'embeds'  => __( 'Embed Blocker', 'perrylabs-cookie-notice' ),
-                    'log'     => __( 'Consent Log', 'perrylabs-cookie-notice' ),
-                    'tools'   => __( 'Tools', 'perrylabs-cookie-notice' ),
+                    'general'  => __( 'General', 'perrylabs-cookie-notice' ),
+                    'messages' => __( 'Messages', 'perrylabs-cookie-notice' ),
+                    'scripts'  => __( 'Scripts & Pixels', 'perrylabs-cookie-notice' ),
+                    'gated'    => __( 'Gated Handles', 'perrylabs-cookie-notice' ),
+                    'embeds'   => __( 'Embed Blocker', 'perrylabs-cookie-notice' ),
+                    'advanced' => __( 'Advanced', 'perrylabs-cookie-notice' ),
+                    'log'      => __( 'Consent Log', 'perrylabs-cookie-notice' ),
+                    'tools'    => __( 'Tools', 'perrylabs-cookie-notice' ),
                 );
                 foreach ( $tabs as $slug => $label ) {
                     $cls = ( $active_tab === $slug ) ? 'nav-tab nav-tab-active' : 'nav-tab';
@@ -271,12 +343,14 @@ class PLCN_Settings {
 
             <?php
             switch ( $active_tab ) {
-                case 'scripts': $this->render_scripts_tab( $options ); break;
-                case 'gated':   $this->render_gated_tab( $options ); break;
-                case 'embeds':  $this->render_embeds_tab( $options ); break;
-                case 'log':     $this->render_log_tab(); break;
-                case 'tools':   $this->render_tools_tab( $options ); break;
-                default:        $this->render_general_tab( $options ); break;
+                case 'messages': $this->render_messages_tab( $options ); break;
+                case 'scripts':  $this->render_scripts_tab( $options ); break;
+                case 'gated':    $this->render_gated_tab( $options ); break;
+                case 'embeds':   $this->render_embeds_tab( $options ); break;
+                case 'advanced': $this->render_advanced_tab( $options ); break;
+                case 'log':      $this->render_log_tab(); break;
+                case 'tools':    $this->render_tools_tab( $options ); break;
+                default:         $this->render_general_tab( $options ); break;
             }
             ?>
 
@@ -301,17 +375,6 @@ class PLCN_Settings {
                     <td><input type="checkbox" id="plcn_enabled" name="plcn_options[enabled]" value="1" <?php checked( 1, $options['enabled'] ?? 1 ); ?> /></td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="plcn_message"><?php esc_html_e( 'Message', 'perrylabs-cookie-notice' ); ?></label></th>
-                    <td><textarea id="plcn_message" name="plcn_options[message]" rows="3" cols="60" class="large-text"><?php echo esc_textarea( $options['message'] ?? '' ); ?></textarea></td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="plcn_button_text"><?php esc_html_e( 'Single Button Text', 'perrylabs-cookie-notice' ); ?></label></th>
-                    <td>
-                        <input type="text" id="plcn_button_text" name="plcn_options[button_text]" value="<?php echo esc_attr( $options['button_text'] ?? 'Got it' ); ?>" class="regular-text" />
-                        <p class="description"><?php esc_html_e( 'Shown only when compliance mode is "None" or no optional scripts are registered.', 'perrylabs-cookie-notice' ); ?></p>
-                    </td>
-                </tr>
-                <tr>
                     <th scope="row"><label for="plcn_position"><?php esc_html_e( 'Banner Position', 'perrylabs-cookie-notice' ); ?></label></th>
                     <td>
                         <select id="plcn_position" name="plcn_options[position]">
@@ -327,7 +390,7 @@ class PLCN_Settings {
                         <select id="plcn_theme" name="plcn_options[theme]">
                             <option value="light" <?php selected( $options['theme'] ?? 'light', 'light' ); ?>><?php esc_html_e( 'Light', 'perrylabs-cookie-notice' ); ?></option>
                             <option value="dark"  <?php selected( $options['theme'] ?? 'light', 'dark' ); ?>><?php esc_html_e( 'Dark', 'perrylabs-cookie-notice' ); ?></option>
-                            <option value="auto"  <?php selected( $options['theme'] ?? 'light', 'auto' ); ?>><?php esc_html_e( 'Auto (follow system preference)', 'perrylabs-cookie-notice' ); ?></option>
+                            <option value="auto"  <?php selected( $options['theme'] ?? 'light', 'auto' ); ?>><?php esc_html_e( 'Auto (system)', 'perrylabs-cookie-notice' ); ?></option>
                         </select>
                     </td>
                 </tr>
@@ -338,6 +401,13 @@ class PLCN_Settings {
                 <tr>
                     <th scope="row"><label for="plcn_button_color"><?php esc_html_e( 'Accent Color', 'perrylabs-cookie-notice' ); ?></label></th>
                     <td><input type="text" id="plcn_button_color" class="plcn-color-field" name="plcn_options[button_color]" value="<?php echo esc_attr( $options['button_color'] ?? '#ffb25d' ); ?>" data-default-color="#ffb25d" /></td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="plcn_privacy_policy_url"><?php esc_html_e( 'Privacy Policy URL', 'perrylabs-cookie-notice' ); ?></label></th>
+                    <td>
+                        <input type="url" id="plcn_privacy_policy_url" name="plcn_options[privacy_policy_url]" value="<?php echo esc_attr( $options['privacy_policy_url'] ?? '' ); ?>" class="large-text" placeholder="https://example.com/privacy" />
+                        <p class="description"><?php esc_html_e( 'Set to auto-insert a "privacy policy" link into the banner message.', 'perrylabs-cookie-notice' ); ?></p>
+                    </td>
                 </tr>
             </table>
 
@@ -359,11 +429,10 @@ class PLCN_Settings {
                     <td>
                         <input type="checkbox" id="plcn_google_consent_mode" name="plcn_options[google_consent_mode]" value="1" <?php checked( 1, $options['google_consent_mode'] ?? 0 ); ?> />
                         <label for="plcn_google_consent_mode"><?php esc_html_e( 'Emit default + update signals for Google Ads / Analytics', 'perrylabs-cookie-notice' ); ?></label>
-                        <p class="description"><?php esc_html_e( 'Required for Google Ads in the EEA.', 'perrylabs-cookie-notice' ); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="plcn_google_consent_wait_ms"><?php esc_html_e( 'Consent Mode wait_for_update (ms)', 'perrylabs-cookie-notice' ); ?></label></th>
+                    <th scope="row"><label for="plcn_google_consent_wait_ms"><?php esc_html_e( 'wait_for_update (ms)', 'perrylabs-cookie-notice' ); ?></label></th>
                     <td><input type="number" id="plcn_google_consent_wait_ms" name="plcn_options[google_consent_wait_ms]" value="<?php echo esc_attr( $options['google_consent_wait_ms'] ?? 500 ); ?>" min="0" max="5000" class="small-text" /></td>
                 </tr>
                 <tr>
@@ -371,6 +440,13 @@ class PLCN_Settings {
                     <td>
                         <input type="checkbox" id="plcn_log_consent" name="plcn_options[log_consent]" value="1" <?php checked( 1, $options['log_consent'] ?? 0 ); ?> />
                         <label for="plcn_log_consent"><?php esc_html_e( 'Record consent decisions (hashed IP/UA)', 'perrylabs-cookie-notice' ); ?></label>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="plcn_honor_dnt"><?php esc_html_e( 'Honor DNT / GPC', 'perrylabs-cookie-notice' ); ?></label></th>
+                    <td>
+                        <input type="checkbox" id="plcn_honor_dnt" name="plcn_options[honor_dnt]" value="1" <?php checked( 1, $options['honor_dnt'] ?? 1 ); ?> />
+                        <label for="plcn_honor_dnt"><?php esc_html_e( 'Treat Do Not Track and Global Privacy Control signals as "reject all" — banner is skipped', 'perrylabs-cookie-notice' ); ?></label>
                     </td>
                 </tr>
                 <tr>
@@ -382,7 +458,6 @@ class PLCN_Settings {
                     <td>
                         <input type="checkbox" id="plcn_skip_for_admins" name="plcn_options[skip_for_admins]" value="1" <?php checked( 1, $options['skip_for_admins'] ?? 1 ); ?> />
                         <label for="plcn_skip_for_admins"><?php esc_html_e( 'Hide the banner from logged-in admin users', 'perrylabs-cookie-notice' ); ?></label>
-                        <p class="description"><?php esc_html_e( 'The WordPress login flow does not preserve front-end cookies, so admins otherwise see the banner on every login. Non-admin logged-in users still see it.', 'perrylabs-cookie-notice' ); ?></p>
                     </td>
                 </tr>
             </table>
@@ -390,12 +465,147 @@ class PLCN_Settings {
             <?php submit_button(); ?>
         </form>
 
-        <h2 style="margin-top:24px;"><?php esc_html_e( 'Shortcodes', 'perrylabs-cookie-notice' ); ?></h2>
-        <ul style="list-style:disc;margin-left:20px;">
-            <li><code>[plcn_settings_link]</code> — <?php esc_html_e( 'Re-open the preferences modal.', 'perrylabs-cookie-notice' ); ?></li>
-            <li><code>[plcn_cookie_policy]</code> — <?php esc_html_e( 'Auto-generated table of registered scripts.', 'perrylabs-cookie-notice' ); ?></li>
-            <li><code>[plcn_ccpa_optout]</code> — <?php esc_html_e( 'CCPA "Do Not Sell" link.', 'perrylabs-cookie-notice' ); ?></li>
-        </ul>
+        <?php $this->render_live_preview( $options ); ?>
+        <?php
+    }
+
+    /**
+     * Live preview block — renders a mini banner using the same CSS as the front-end.
+     */
+    private function render_live_preview( array $options ): void {
+        $bg     = $options['bg_color']     ?? '#111';
+        $accent = $options['button_color'] ?? '#ffb25d';
+        $msg    = PLCN_Strings::get( 'banner_message' );
+        $title  = PLCN_Strings::get( 'banner_title' );
+        ?>
+        <h2 style="margin-top:32px;"><?php esc_html_e( 'Live preview', 'perrylabs-cookie-notice' ); ?></h2>
+        <p class="description"><?php esc_html_e( 'Approximates the front-end banner with your current colors and messages. Save the form to refresh.', 'perrylabs-cookie-notice' ); ?></p>
+        <div id="plcn-admin-preview" style="margin-top:8px;padding:16px;background:#f0f0f1;border:1px solid #c3c4c7;border-radius:6px;">
+            <div class="plcn-banner-inner" id="plcn-preview-bar" style="background:<?php echo esc_attr( $bg ); ?>;color:#fff;padding:14px 18px;border-radius:6px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:space-between;">
+                <div style="flex:1;min-width:260px;">
+                    <?php if ( $title ) : ?>
+                        <p style="margin:0 0 4px;font-weight:600;font-size:14px;" id="plcn-preview-title"><?php echo esc_html( $title ); ?></p>
+                    <?php endif; ?>
+                    <p style="margin:0;font-size:13px;line-height:1.5;" id="plcn-preview-msg"><?php echo esc_html( $msg ); ?></p>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" id="plcn-preview-accept" style="background:<?php echo esc_attr( $accent ); ?>;color:<?php echo esc_attr( $bg ); ?>;border:0;padding:9px 16px;border-radius:6px;font-weight:600;font-size:13px;cursor:default;">
+                        <?php echo esc_html( PLCN_Strings::get( 'btn_accept_all' ) ); ?>
+                    </button>
+                    <button type="button" id="plcn-preview-reject" style="background:transparent;color:#fff;border:1px solid <?php echo esc_attr( $accent ); ?>;padding:9px 16px;border-radius:6px;font-weight:600;font-size:13px;cursor:default;">
+                        <?php echo esc_html( PLCN_Strings::get( 'btn_reject_all' ) ); ?>
+                    </button>
+                    <button type="button" style="background:transparent;color:rgba(255,255,255,0.78);border:0;padding:9px 6px;font-size:13px;text-decoration:underline;cursor:default;">
+                        <?php echo esc_html( PLCN_Strings::get( 'btn_customize' ) ); ?>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <script>
+        window.plcnUpdatePreview = function () {
+            var bgEl = document.getElementById('plcn_bg_color');
+            var acEl = document.getElementById('plcn_button_color');
+            var bg = bgEl ? bgEl.value : '<?php echo esc_js( $bg ); ?>';
+            var ac = acEl ? acEl.value : '<?php echo esc_js( $accent ); ?>';
+            var bar = document.getElementById('plcn-preview-bar');
+            var acc = document.getElementById('plcn-preview-accept');
+            var rej = document.getElementById('plcn-preview-reject');
+            if (bar) bar.style.background = bg;
+            if (acc) { acc.style.background = ac; acc.style.color = bg; }
+            if (rej) rej.style.borderColor = ac;
+        };
+        </script>
+        <?php
+    }
+
+    /* ============================================================== */
+    /*  Messages tab                                                    */
+    /* ============================================================== */
+
+    private function render_messages_tab( array $options ): void {
+        $current = $options['strings'] ?? array();
+        ?>
+        <p><?php esc_html_e( 'Customize every visible message and label. Blanks fall back to the default text shown in placeholders.', 'perrylabs-cookie-notice' ); ?></p>
+        <form method="post" action="options.php">
+            <?php settings_fields( 'plcn_settings_group' ); ?>
+
+            <?php
+            // Hidden fields preserving everything else.
+            foreach ( $options as $k => $v ) {
+                if ( in_array( $k, array( 'strings', 'scripts', 'gated_scripts', 'gated_styles', 'embed_blocker', 'policy_version' ), true ) ) continue;
+                if ( is_array( $v ) ) continue;
+                printf( '<input type="hidden" name="plcn_options[%s]" value="%s" />', esc_attr( $k ), esc_attr( (string) $v ) );
+            }
+            ?>
+
+            <?php foreach ( PLCN_Strings::admin_groups() as $group_label => $keys ) : ?>
+                <h2><?php echo esc_html( $group_label ); ?></h2>
+                <table class="form-table" role="presentation">
+                    <?php foreach ( $keys as $key => $label ) :
+                        $default = PLCN_Strings::defaults()[ $key ] ?? '';
+                        $value   = $current[ $key ] ?? '';
+                        $multi   = strlen( $default ) > 80;
+                        ?>
+                        <tr>
+                            <th scope="row"><label for="plcn_str_<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label></th>
+                            <td>
+                                <?php if ( $multi ) : ?>
+                                    <textarea id="plcn_str_<?php echo esc_attr( $key ); ?>" name="plcn_options[strings][<?php echo esc_attr( $key ); ?>]" rows="2" class="large-text" placeholder="<?php echo esc_attr( $default ); ?>"><?php echo esc_textarea( $value ); ?></textarea>
+                                <?php else : ?>
+                                    <input type="text" id="plcn_str_<?php echo esc_attr( $key ); ?>" name="plcn_options[strings][<?php echo esc_attr( $key ); ?>]" value="<?php echo esc_attr( $value ); ?>" class="regular-text" placeholder="<?php echo esc_attr( $default ); ?>" />
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+            <?php endforeach; ?>
+
+            <?php submit_button( __( 'Save Messages', 'perrylabs-cookie-notice' ) ); ?>
+        </form>
+        <?php
+    }
+
+    /* ============================================================== */
+    /*  Advanced tab                                                    */
+    /* ============================================================== */
+
+    private function render_advanced_tab( array $options ): void {
+        ?>
+        <form method="post" action="options.php">
+            <?php settings_fields( 'plcn_settings_group' ); ?>
+
+            <?php
+            foreach ( $options as $k => $v ) {
+                if ( in_array( $k, array( 'skip_urls', 'custom_css', 'strings', 'scripts', 'gated_scripts', 'gated_styles', 'embed_blocker', 'policy_version' ), true ) ) continue;
+                if ( is_array( $v ) ) continue;
+                printf( '<input type="hidden" name="plcn_options[%s]" value="%s" />', esc_attr( $k ), esc_attr( (string) $v ) );
+            }
+            ?>
+
+            <h2><?php esc_html_e( 'Skip the banner on specific URLs', 'perrylabs-cookie-notice' ); ?></h2>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="plcn_skip_urls"><?php esc_html_e( 'URL patterns', 'perrylabs-cookie-notice' ); ?></label></th>
+                    <td>
+                        <textarea id="plcn_skip_urls" name="plcn_options[skip_urls]" rows="6" class="large-text code" placeholder="/checkout/*&#10;/login/&#10;/wp-login.php"><?php echo esc_textarea( $options['skip_urls'] ?? '' ); ?></textarea>
+                        <p class="description"><?php esc_html_e( 'One path per line. Supports * and ? wildcards. Matches the path portion only (e.g. /checkout/*).', 'perrylabs-cookie-notice' ); ?></p>
+                    </td>
+                </tr>
+            </table>
+
+            <h2><?php esc_html_e( 'Custom CSS', 'perrylabs-cookie-notice' ); ?></h2>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="plcn_custom_css"><?php esc_html_e( 'CSS', 'perrylabs-cookie-notice' ); ?></label></th>
+                    <td>
+                        <textarea id="plcn_custom_css" name="plcn_options[custom_css]" rows="12" class="large-text code"><?php echo esc_textarea( $options['custom_css'] ?? '' ); ?></textarea>
+                        <p class="description"><?php esc_html_e( 'Injected as a <style> block in <head>. Useful selectors: #plcn-banner, #plcn-preferences, .plcn-btn, .plcn-embed-wrap, .plcn-policy-table.', 'perrylabs-cookie-notice' ); ?></p>
+                    </td>
+                </tr>
+            </table>
+
+            <?php submit_button(); ?>
+        </form>
         <?php
     }
 
@@ -485,7 +695,7 @@ class PLCN_Settings {
             <p class="description">
                 <?php
                 printf(
-                    esc_html__( 'Pre-filled from the %s preset. Enter your %s below and it will be substituted into the snippet automatically.', 'perrylabs-cookie-notice' ),
+                    esc_html__( 'Pre-filled from the %1$s preset. Enter your %2$s below — it will be substituted on save.', 'perrylabs-cookie-notice' ),
                     '<strong>' . esc_html( $preset['label'] ) . '</strong>',
                     '<strong>' . esc_html( $preset['id_label'] ?? 'ID' ) . '</strong>'
                 );
@@ -502,7 +712,7 @@ class PLCN_Settings {
         $f_inline     = $edit_data ? ( $edit_data['inline'] ?? '' ) : ( $preset ? $preset['inline'] : '' );
         $f_attrs      = $edit_data ? implode( ',', (array) ( $edit_data['attrs'] ?? array() ) ) : ( $preset ? implode( ',', $preset['attrs'] ?? array() ) : '' );
         $f_load_in    = $edit_data ? ( $edit_data['load_in'] ?? 'head' ) : ( $preset ? ( $preset['load_in'] ?? 'head' ) : 'head' );
-        $id_label     = $preset['id_label'] ?? ( $edit_data ? 'Service ID' : 'Service ID' );
+        $id_label     = $preset['id_label'] ?? 'Service ID';
         ?>
 
         <form method="post" action="<?php echo esc_url( admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=scripts' ) ); ?>">
@@ -512,12 +722,7 @@ class PLCN_Settings {
             <table class="form-table" role="presentation">
                 <tr>
                     <th scope="row"><label for="script_handle"><?php esc_html_e( 'Handle (slug)', 'perrylabs-cookie-notice' ); ?></label></th>
-                    <td>
-                        <input type="text" id="script_handle" name="script_handle"
-                               value="<?php echo esc_attr( $f_handle ); ?>" class="regular-text" required
-                               <?php echo $edit_data ? 'readonly' : ''; ?>
-                               pattern="[a-z0-9\-]+" placeholder="my-tracking-script" />
-                    </td>
+                    <td><input type="text" id="script_handle" name="script_handle" value="<?php echo esc_attr( $f_handle ); ?>" class="regular-text" required <?php echo $edit_data ? 'readonly' : ''; ?> pattern="[a-z0-9\-]+" placeholder="my-tracking-script" /></td>
                 </tr>
                 <tr>
                     <th scope="row"><label for="script_label"><?php esc_html_e( 'Display Name', 'perrylabs-cookie-notice' ); ?></label></th>
@@ -538,27 +743,20 @@ class PLCN_Settings {
                     <th scope="row"><label for="script_service_id"><?php echo esc_html( $id_label ); ?></label></th>
                     <td>
                         <input type="text" id="script_service_id" name="script_service_id" value="<?php echo esc_attr( $f_service_id ); ?>" class="regular-text" placeholder="e.g. G-XXXXX or GTM-XXXXX" />
-                        <p class="description"><?php esc_html_e( 'Your service ID. Any %s in the URL or snippet below will be replaced with this value on save.', 'perrylabs-cookie-notice' ); ?></p>
+                        <p class="description"><?php esc_html_e( 'Any %s in the URL/snippet will be replaced with this value on save.', 'perrylabs-cookie-notice' ); ?></p>
                     </td>
                 </tr>
                 <tr>
                     <th scope="row"><label for="script_src"><?php esc_html_e( 'External Script URL', 'perrylabs-cookie-notice' ); ?></label></th>
-                    <td>
-                        <input type="url" id="script_src" name="script_src" value="<?php echo esc_attr( $f_src ); ?>" class="large-text" placeholder="https://example.com/script.js" />
-                    </td>
+                    <td><input type="url" id="script_src" name="script_src" value="<?php echo esc_attr( $f_src ); ?>" class="large-text" placeholder="https://example.com/script.js" /></td>
                 </tr>
                 <tr>
                     <th scope="row"><label for="script_inline"><?php esc_html_e( 'Inline JS Snippet', 'perrylabs-cookie-notice' ); ?></label></th>
-                    <td>
-                        <textarea id="script_inline" name="script_inline" rows="6" class="large-text code"><?php echo esc_textarea( $f_inline ); ?></textarea>
-                        <p class="description"><?php esc_html_e( 'Raw JavaScript (no <script> tags).', 'perrylabs-cookie-notice' ); ?></p>
-                    </td>
+                    <td><textarea id="script_inline" name="script_inline" rows="6" class="large-text code"><?php echo esc_textarea( $f_inline ); ?></textarea></td>
                 </tr>
                 <tr>
                     <th scope="row"><label for="script_attrs"><?php esc_html_e( 'Script Attributes', 'perrylabs-cookie-notice' ); ?></label></th>
-                    <td>
-                        <input type="text" id="script_attrs" name="script_attrs" value="<?php echo esc_attr( $f_attrs ); ?>" class="regular-text" placeholder="async,defer" />
-                    </td>
+                    <td><input type="text" id="script_attrs" name="script_attrs" value="<?php echo esc_attr( $f_attrs ); ?>" class="regular-text" placeholder="async,defer" /></td>
                 </tr>
                 <tr>
                     <th scope="row"><label for="script_load_in"><?php esc_html_e( 'Load In', 'perrylabs-cookie-notice' ); ?></label></th>
@@ -590,12 +788,7 @@ class PLCN_Settings {
         $gated_scripts = $options['gated_scripts'] ?? array();
         $gated_styles  = $options['gated_styles']  ?? array();
         ?>
-        <p>
-            <?php esc_html_e( 'Gate scripts or stylesheets that other plugins/themes enqueue via wp_enqueue_script / wp_enqueue_style. Enter the WordPress handle and a category — Cookie Monster rewrites the rendered tag so the browser does not execute it until consent.', 'perrylabs-cookie-notice' ); ?>
-        </p>
-        <p class="description">
-            <?php esc_html_e( 'Tip: find handles using Query Monitor or by reading the plugin/theme source.', 'perrylabs-cookie-notice' ); ?>
-        </p>
+        <p><?php esc_html_e( 'Gate scripts or stylesheets that other plugins/themes enqueue. Enter the WordPress handle and a category — the rendered tag is rewritten until consent.', 'perrylabs-cookie-notice' ); ?></p>
 
         <h3 style="margin-top:24px;"><?php esc_html_e( 'Gated Scripts', 'perrylabs-cookie-notice' ); ?></h3>
         <?php $this->render_gated_table( $gated_scripts, 'script' ); ?>
@@ -676,15 +869,14 @@ class PLCN_Settings {
     private function render_embeds_tab( array $options ): void {
         $enabled = $options['embed_blocker'] ?? array();
         ?>
-        <p>
-            <?php esc_html_e( 'Replace third-party iframes with a click-to-load placeholder until the visitor consents. Pick which providers to block — others pass through unchanged.', 'perrylabs-cookie-notice' ); ?>
-        </p>
+        <p><?php esc_html_e( 'Replace third-party iframes with a click-to-load placeholder until consent. Pick which providers to block — others pass through.', 'perrylabs-cookie-notice' ); ?></p>
         <form method="post" action="options.php">
             <?php settings_fields( 'plcn_settings_group' ); ?>
             <?php
-            // Preserve other fields to avoid wiping them.
-            foreach ( array( 'enabled', 'message', 'button_text', 'expiry_days', 'bg_color', 'button_color', 'position', 'theme', 'compliance_mode', 'google_consent_mode', 'google_consent_wait_ms', 'log_consent' ) as $k ) {
-                printf( '<input type="hidden" name="plcn_options[%s]" value="%s" />', esc_attr( $k ), esc_attr( (string) ( $options[ $k ] ?? '' ) ) );
+            foreach ( $options as $k => $v ) {
+                if ( in_array( $k, array( 'embed_blocker', 'strings', 'scripts', 'gated_scripts', 'gated_styles', 'policy_version' ), true ) ) continue;
+                if ( is_array( $v ) ) continue;
+                printf( '<input type="hidden" name="plcn_options[%s]" value="%s" />', esc_attr( $k ), esc_attr( (string) $v ) );
             }
             ?>
             <table class="widefat striped" style="max-width:640px;">
@@ -734,8 +926,16 @@ class PLCN_Settings {
             ?>
         </p>
 
+        <?php if ( $total > 0 ) : ?>
+            <p>
+                <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=plcn_export_log' ), 'plcn_export_log' ) ); ?>" class="button button-secondary">
+                    <?php esc_html_e( 'Export CSV', 'perrylabs-cookie-notice' ); ?>
+                </a>
+            </p>
+        <?php endif; ?>
+
         <?php if ( empty( $entries ) ) : ?>
-            <p class="description"><?php esc_html_e( 'No events yet. Enable "Audit Log" on the General tab to start recording.', 'perrylabs-cookie-notice' ); ?></p>
+            <p class="description"><?php esc_html_e( 'No events yet. Enable "Audit Log" on the General tab.', 'perrylabs-cookie-notice' ); ?></p>
             <?php return;
         endif; ?>
 
@@ -789,14 +989,23 @@ class PLCN_Settings {
 
     private function render_tools_tab( array $options ): void {
         if ( ! empty( $_GET['reset'] ) ) {
-            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Policy version bumped. All visitors will be re-prompted on their next visit.', 'perrylabs-cookie-notice' ) . '</p></div>';
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Policy version bumped. All visitors will be re-prompted.', 'perrylabs-cookie-notice' ) . '</p></div>';
+        }
+        if ( ! empty( $_GET['imported'] ) ) {
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Settings imported.', 'perrylabs-cookie-notice' ) . '</p></div>';
+        }
+        if ( ! empty( $_GET['import_error'] ) ) {
+            $msg = ( 'invalid' === $_GET['import_error'] )
+                ? __( 'The uploaded file is not a valid Cookie Monster settings export.', 'perrylabs-cookie-notice' )
+                : __( 'No file was uploaded.', 'perrylabs-cookie-notice' );
+            echo '<div class="notice notice-error is-dismissible"><p>' . esc_html( $msg ) . '</p></div>';
         }
         ?>
         <h3><?php esc_html_e( 'Re-prompt all visitors', 'perrylabs-cookie-notice' ); ?></h3>
         <p class="description">
             <?php
             printf(
-                esc_html__( 'Current policy version: %d. Bumping invalidates every visitor\'s consent cookie and re-prompts them on their next visit. Use after changing your cookie inventory.', 'perrylabs-cookie-notice' ),
+                esc_html__( 'Current policy version: %d. Bumping invalidates every visitor\'s consent cookie.', 'perrylabs-cookie-notice' ),
                 (int) ( $options['policy_version'] ?? 1 )
             );
             ?>
@@ -810,9 +1019,6 @@ class PLCN_Settings {
         </form>
 
         <h3 style="margin-top:32px;"><?php esc_html_e( 'Reset my consent (for testing)', 'perrylabs-cookie-notice' ); ?></h3>
-        <p class="description">
-            <?php esc_html_e( 'Clear your own consent cookies and reload the front page. Other visitors are unaffected.', 'perrylabs-cookie-notice' ); ?>
-        </p>
         <p>
             <button type="button" class="button button-secondary" id="plcn-reset-mine">
                 <?php esc_html_e( 'Clear my consent + open front page', 'perrylabs-cookie-notice' ); ?>
@@ -831,12 +1037,32 @@ class PLCN_Settings {
         })();
         </script>
 
+        <h3 style="margin-top:32px;"><?php esc_html_e( 'Export settings', 'perrylabs-cookie-notice' ); ?></h3>
+        <p class="description"><?php esc_html_e( 'Download all settings as a JSON file. Useful for cloning across staging/production.', 'perrylabs-cookie-notice' ); ?></p>
+        <p>
+            <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=plcn_export_settings' ), 'plcn_export_settings' ) ); ?>" class="button button-secondary">
+                <?php esc_html_e( 'Download settings JSON', 'perrylabs-cookie-notice' ); ?>
+            </a>
+        </p>
+
+        <h3 style="margin-top:32px;"><?php esc_html_e( 'Import settings', 'perrylabs-cookie-notice' ); ?></h3>
+        <p class="description"><?php esc_html_e( 'Replace current settings with a previously exported JSON file. Existing scripts, gated handles, and policy version are preserved.', 'perrylabs-cookie-notice' ); ?></p>
+        <form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+            <?php wp_nonce_field( 'plcn_import_settings' ); ?>
+            <input type="hidden" name="action" value="plcn_import_settings" />
+            <p><input type="file" name="plcn_settings_file" accept="application/json" required /></p>
+            <p><button type="submit" class="button button-primary"><?php esc_html_e( 'Import', 'perrylabs-cookie-notice' ); ?></button></p>
+        </form>
+
         <h3 style="margin-top:32px;"><?php esc_html_e( 'Developer reference', 'perrylabs-cookie-notice' ); ?></h3>
         <ul style="list-style:disc;margin-left:20px;">
-            <li><code>plcn_has_consent( 'analytics' )</code> — <?php esc_html_e( 'Check consent in PHP.', 'perrylabs-cookie-notice' ); ?></li>
-            <li><code>plcn_register_script( $handle, $config )</code> — <?php esc_html_e( 'Register a script programmatically.', 'perrylabs-cookie-notice' ); ?></li>
-            <li><code>plcn_gate_script( $handle, $category )</code> — <?php esc_html_e( 'Gate a WP-enqueued script.', 'perrylabs-cookie-notice' ); ?></li>
-            <li><code>plcn_gate_style( $handle, $category )</code> — <?php esc_html_e( 'Gate a WP-enqueued stylesheet.', 'perrylabs-cookie-notice' ); ?></li>
+            <li><code>plcn_has_consent( 'analytics' )</code></li>
+            <li><code>plcn_register_script( $handle, $config )</code></li>
+            <li><code>plcn_gate_script( $handle, $category )</code> / <code>plcn_gate_style</code></li>
+            <li>REST: <code>GET /wp-json/plcn/v1/consent</code>, <code>POST /wp-json/plcn/v1/consent</code>, <code>GET /wp-json/plcn/v1/policy</code></li>
+            <li>WP-CLI: <code>wp plcn settings export|import</code>, <code>wp plcn policy bump</code>, <code>wp plcn log export|clear</code></li>
+            <li>Capability filter: <code>add_filter( 'plcn_manage_capability', fn() =&gt; 'edit_others_posts' );</code></li>
+            <li>String override filter: <code>add_filter( 'plcn_string', fn( $v, $key ) =&gt; ..., 10, 2 );</code></li>
         </ul>
         <?php
     }

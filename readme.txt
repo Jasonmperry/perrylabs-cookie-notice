@@ -4,7 +4,7 @@ Tags: cookies, consent, gdpr, ccpa, privacy, google consent mode, cookie banner
 Requires at least: 5.8
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 3.1.1
+Stable tag: 3.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -84,6 +84,20 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 
 == Changelog ==
 
+= 3.2.0 =
+* New: every user-facing string is admin-customizable on a dedicated **Messages** tab (banner title, message, button labels, category labels, modal copy, embed placeholder, CCPA opt-out) — good defaults preserved.
+* New: **Privacy Policy URL** setting auto-injects a styled "privacy policy" link into the banner message.
+* New: honor **Do Not Track** and **Global Privacy Control** signals — banner is skipped, scripts blocked, Google Consent Mode set to denied. On by default.
+* New: **URL skip patterns** — exclude the banner from `/checkout/*`, `/login/*`, etc. via a textarea on the Advanced tab.
+* New: **Custom CSS** textarea for theming without forking the plugin.
+* New: **REST API** at `/wp-json/plcn/v1/` — `GET/POST /consent`, `GET /policy`, `GET /scripts` (admin). For headless WP.
+* New: **WP-CLI** commands — `wp plcn settings export|import`, `wp plcn policy bump`, `wp plcn log export|clear`.
+* New: **Settings JSON export/import** in admin (Tools tab). Clone configuration across staging/production.
+* New: **CSV export** of the consent log (Tools/Log tab and via WP-CLI).
+* New: **Live banner preview** on the General tab — see colors/messages before saving.
+* New: **Capability filter** `plcn_manage_capability` lets admins delegate plugin management to a custom role.
+* New: **String override filter** `plcn_string` for programmatic overrides without touching admin.
+
 = 3.1.1 =
 * New: "Skip for admins" setting (default on) — hides the banner from logged-in admin users, since the WP login flow doesn't preserve front-end cookies and admins otherwise re-see the banner on every login. Non-admin logged-in users still see it.
 
@@ -117,6 +131,9 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 * Initial release — simple implied-consent notice.
 
 == Upgrade Notice ==
+
+= 3.2.0 =
+Enterprise hardening: every string customizable, REST API, WP-CLI, CSV log export, JSON settings export/import, DNT/GPC honor, URL skip patterns, custom CSS, capability filter, live admin preview. Settings preserved.
 
 = 3.1.1 =
 Adds a "skip for admins" toggle so logged-in admins don't see the banner on every login (WP's login flow doesn't preserve front-end cookies).

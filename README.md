@@ -17,6 +17,13 @@ A consent banner that just sets a cookie does nothing to stop third-party script
 - 4-category consent: Strictly Necessary, Analytics, Marketing, Other
 - Equal-prominence **Accept All / Reject All** buttons (2022+ EU compliance)
 - **Iframe / embed blocker** — YouTube, Vimeo, Maps, X, Facebook, Instagram, SoundCloud, Spotify
+- **Every string customizable** via a dedicated Messages tab — good defaults preserved
+- **Privacy Policy URL** auto-injects a link into the banner message
+- **Do Not Track + Global Privacy Control** honored (banner skipped, scripts blocked, Consent Mode set to denied)
+- **URL skip patterns** — exclude banner from checkout / login / etc.
+- **Custom CSS** textarea for theming without forking
+- **REST API** at `/wp-json/plcn/v1/` and **WP-CLI** commands (`wp plcn ...`)
+- **Settings JSON export/import**, **CSV consent log export**, **live banner preview** in admin
 - Preferences modal with per-category toggles, focus trap, ESC handling
 - Light / Dark / Auto theme (follows `prefers-color-scheme`)
 - 5 admin-managed Quick Add presets (GA4, GTM, Facebook Pixel, LinkedIn Insight, HubSpot) with **smart ID substitution**
@@ -26,8 +33,9 @@ A consent banner that just sets a cookie does nothing to stop third-party script
 - Policy versioning — bump to force every visitor to re-consent
 - Shortcodes: `[plcn_settings_link]`, `[plcn_cookie_policy]`, `[plcn_ccpa_optout]`
 - Native WP color picker, "Reset my consent" testing button
+- Capability filter `plcn_manage_capability` and string-override filter `plcn_string`
 - Adopts the shared **PerryLabs branding tokens** — consistent look across all PerryLabs plugins
-- ~9KB JS, vanilla, no dependencies
+- ~10KB JS, vanilla, no dependencies
 - GPL-2.0-or-later
 
 ## Installation

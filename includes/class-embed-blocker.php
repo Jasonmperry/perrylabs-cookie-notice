@@ -168,14 +168,14 @@ class PLCN_Embed_Blocker {
         $label    = esc_html( $provider['label'] );
         $category = esc_attr( $provider['category'] );
 
-        $message  = sprintf(
-            /* translators: %s is the provider name (e.g. YouTube). */
-            esc_html__( 'This %s embed is blocked until you accept marketing cookies.', 'perrylabs-cookie-notice' ),
-            $label
+        $template = PLCN_Strings::get( 'embed_blocked_message' );
+        $message  = esc_html( false !== strpos( $template, '%s' )
+            ? sprintf( $template, $provider['label'] )
+            : $template
         );
 
-        $accept_text     = esc_html__( 'Load this content', 'perrylabs-cookie-notice' );
-        $preferences_text = esc_html__( 'Manage preferences', 'perrylabs-cookie-notice' );
+        $accept_text      = esc_html( PLCN_Strings::get( 'embed_load_once' ) );
+        $preferences_text = esc_html( PLCN_Strings::get( 'embed_open_preferences' ) );
 
         return sprintf(
             '<div class="plcn-embed-wrap" data-plcn-embed-category="%1$s">' .

@@ -59,7 +59,7 @@ class PLCN_Settings {
             'strings'                => array(),
             // v3.3.0 additions
             'custom_categories'      => array(),
-            // v3.4.0: PerryLabs branding off by default for portability.
+            // v3.4.0: vendor branding off by default for portability.
             // Site owners can opt in via Settings → Cookie Notice → General.
             'show_branding'          => 0,
         );
@@ -87,7 +87,7 @@ class PLCN_Settings {
         if ( 'settings_page_' . self::PAGE_SLUG !== $hook ) return;
 
         wp_enqueue_style(
-            'perrylabs-tokens',
+            'cm-tokens',
             PL_COOKIE_PLUGIN_URL . 'includes/branding/tokens.css',
             array(),
             PL_COOKIE_VERSION
@@ -569,10 +569,9 @@ class PLCN_Settings {
             ?>
 
             <?php
+            // Branded sites get the full footer; neutral installs show nothing extra.
             if ( $branded ) {
                 PerryLabs_Branding::footer();
-            } else {
-                PerryLabs_Branding::attribution();
             }
             ?>
         </div>

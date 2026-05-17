@@ -1,13 +1,11 @@
 <?php
 /**
- * Plugin Name: PerryLabs Cookie Notice
- * Plugin URI: https://perrylabs.io
+ * Plugin Name: Cookie Monster — Privacy & Consent
  * Description: Granular cookie consent with category-based opt-in, Google Consent Mode v2, script gating, geo-targeting, and a server-side audit log. No external dependencies.
- * Version: 3.4.0
+ * Version: 3.4.1
  * Requires at least: 5.8
  * Requires PHP: 7.4
- * Author: PerryLabs
- * Author URI: https://jasonmperry.com
+ * Author: Cookie Monster
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: perrylabs-cookie-notice
@@ -17,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PL_COOKIE_VERSION', '3.4.0' );
+define( 'PL_COOKIE_VERSION', '3.4.1' );
 define( 'PL_COOKIE_CODENAME', 'Cookie Monster' );
 define( 'PL_COOKIE_PLUGIN_FILE', __FILE__ );
 define( 'PL_COOKIE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );

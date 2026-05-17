@@ -1,5 +1,5 @@
 /**
- * Cookie Monster — PerryLabs Cookie Notice
+ * Cookie Monster — Privacy & Consent
  *
  * Vanilla JS consent management: geo detection, banner + preferences panel,
  * Google Consent Mode v2 update signals, gated WP-enqueued asset activation,

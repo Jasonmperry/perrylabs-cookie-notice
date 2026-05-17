@@ -1,9 +1,8 @@
-=== PerryLabs Cookie Notice ===
-Contributors: perrylabs
+=== Cookie Monster — Privacy & Consent ===
 Tags: cookies, consent, gdpr, ccpa, privacy, google consent mode, cookie banner
 Requires at least: 5.8
 Requires PHP: 7.4
-Stable tag: 3.4.0
+Stable tag: 3.4.1
 Tested up to: 6.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -12,7 +11,7 @@ Granular cookie consent with category-based opt-in, Google Consent Mode v2, Word
 
 == Description ==
 
-PerryLabs Cookie Notice ("Cookie Monster") is a lightweight, no-bloat consent banner that actually blocks third-party scripts until consent is granted — the way GDPR requires.
+Cookie Monster is a lightweight, no-bloat consent banner that actually blocks third-party scripts until consent is granted — the way GDPR requires.
 
 = What it does =
 
@@ -84,9 +83,14 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 
 == Changelog ==
 
+= 3.4.1 =
+* **Neutralized fresh-install metadata** so the plugin ships with no vendor-branded text by default. Plugin Name, Description, Author, and readme intro are neutral. The opt-in `show_branding` setting still surfaces a branded header/footer for site owners who want it.
+* Removed the attribution line that was rendering on every fresh install in v3.4.0 — neutral installs now have no vendor footer at all.
+* Scanner HTTP user-agent renamed to `CookieMonster-Scanner/<version>` so it doesn't broadcast the vendor name in the access logs of sites being scanned.
+
 = 3.4.0 =
-* New: **Bundled logo asset** — the admin-screen logo now ships with the plugin (`includes/branding/assets/perrylabs-logomark.png`). The S3-hosted logo is used only as a fallback if the bundled file is somehow missing. Plugin no longer has an external runtime asset dependency.
-* New: **Branding is opt-in.** Default install shows a neutral "Cookie Notice Settings" header and a compact "Plugin by PerryLabs" attribution line. Toggle "Admin branding" on the General tab to enable the full PerryLabs logo header + footer (useful on PerryLabs-managed sites).
+* New: **Bundled logo asset** — the admin-screen logo ships locally. External CDN is now only a fallback.
+* New: **Branding is opt-in.** Default install shows a neutral header; flip "Admin branding" in the General tab to enable a vendor-branded header + footer.
 * Updated tested-up-to to 6.8.
 
 = 3.3.1 =
@@ -125,7 +129,7 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 * New: WordPress native color picker for background and accent colors.
 * New: Light / Dark / Auto theme for the preferences modal (Auto follows `prefers-color-scheme`).
 * New: "Reset my consent" button on a Tools tab for testing.
-* New: Adopts the shared PerryLabs branding tokens (color, type, logos) — same look across all PerryLabs plugins.
+* New: Adopts a shared set of design tokens for color, type, and logos used across companion plugins.
 * Changed: Admin reorganized into General / Scripts & Pixels / Gated Handles / Embed Blocker / Consent Log / Tools tabs.
 * Fixed: Background and accent colors now hex-validated via `sanitize_hex_color()`.
 
@@ -150,8 +154,11 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 
 == Upgrade Notice ==
 
+= 3.4.1 =
+Removes vendor-branded text from fresh installs (Plugin Name, Author, default attribution, scanner user-agent). Existing installs that want the branded admin look should toggle Settings → Cookie Notice → General → Admin branding.
+
 = 3.4.0 =
-Bundles the admin logo locally (no external runtime dependency) and makes PerryLabs branding opt-in via a new General-tab toggle. Existing installs that want the branded look can enable it under Settings → Cookie Notice → General → Admin branding.
+Bundles the admin logo locally (no external runtime dependency) and makes vendor branding opt-in via a new General-tab toggle. Existing installs that want the branded look can enable it under Settings → Cookie Notice → General → Admin branding.
 
 = 3.3.0 =
 Adds the cookie scanner, per-cookie metadata, privacy policy page generator, custom categories, and translation readiness. Settings preserved.

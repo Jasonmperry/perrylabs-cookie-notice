@@ -74,7 +74,7 @@ class PLCN_Scanner {
             $response = wp_remote_get( $url, array(
                 'timeout'     => 8,
                 'redirection' => 3,
-                'user-agent'  => 'PerryLabs-Cookie-Scanner/1.0 (+plcn)',
+                'user-agent'  => 'CookieMonster-Scanner/' . PL_COOKIE_VERSION,
                 'headers'     => array( 'Accept' => 'text/html,*/*' ),
             ) );
 

@@ -25,6 +25,6 @@ wp i18n make-pot . languages/perrylabs-cookie-notice.pot \
     --slug=perrylabs-cookie-notice \
     --domain=perrylabs-cookie-notice \
     --exclude=tools,languages,node_modules,vendor \
-    --headers='{"Report-Msgid-Bugs-To":"https://github.com/Jasonmperry/perrylabs-cookie-notice/issues","X-Domain":"perrylabs-cookie-notice"}'
+    --headers='{"X-Domain":"perrylabs-cookie-notice"}'
 
 echo "Wrote languages/perrylabs-cookie-notice.pot"

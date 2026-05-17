@@ -1,9 +1,9 @@
-# Copyright (C) 2026 PerryLabs
+# Copyright (C) 2026 Cookie Monster contributors
 # This file is distributed under the GPL-2.0-or-later license.
 msgid ""
 msgstr ""
-"Project-Id-Version: PerryLabs Cookie Notice 3.3.0\n"
-"Report-Msgid-Bugs-To: https://github.com/Jasonmperry/perrylabs-cookie-notice/issues\n"
+"Project-Id-Version: Cookie Monster — Privacy & Consent 3.4.1\n"
+"Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-05-16T22:00:00+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"

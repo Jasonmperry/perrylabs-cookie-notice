@@ -1,8 +1,6 @@
-# PerryLabs Cookie Notice
+# Cookie Monster — Privacy & Consent
 
 Granular cookie consent for WordPress with category-based opt-in, **Google Consent Mode v2**, WordPress script gating, geo-targeting, and a server-side audit log. No external dependencies.
-
-Internal codename: **Cookie Monster**.
 
 ## What it actually does
 
@@ -38,7 +36,7 @@ A consent banner that just sets a cookie does nothing to stop third-party script
 - Shortcodes: `[plcn_settings_link]`, `[plcn_cookie_policy]`, `[plcn_ccpa_optout]`
 - Native WP color picker, "Reset my consent" testing button
 - Capability filter `plcn_manage_capability` and string-override filter `plcn_string`
-- Adopts the shared **PerryLabs branding tokens** — consistent look across all PerryLabs plugins
+- Opt-in vendor branding (off by default) — bundled logo, no external runtime assets
 - ~10KB JS, vanilla, no dependencies
 - GPL-2.0-or-later
 
@@ -48,8 +46,8 @@ A consent banner that just sets a cookie does nothing to stop third-party script
 
 ```bash
 cd your-wordpress-project/
-git submodule add https://github.com/Jasonmperry/perrylabs-cookie-notice.git wp-content/plugins/perrylabs-cookie-notice
-git commit -m "Add PerryLabs Cookie Notice plugin as submodule"
+git submodule add <YOUR-REPO-URL>.git wp-content/plugins/cookie-monster
+git commit -m "Add Cookie Monster plugin as submodule"
 ```
 
 After cloning a project that includes this submodule:

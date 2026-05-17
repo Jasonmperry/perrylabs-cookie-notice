@@ -2,9 +2,9 @@
 Contributors: perrylabs
 Tags: cookies, consent, gdpr, ccpa, privacy, google consent mode, cookie banner
 Requires at least: 5.8
-Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 3.3.1
+Stable tag: 3.4.0
+Tested up to: 6.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -84,6 +84,11 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 
 == Changelog ==
 
+= 3.4.0 =
+* New: **Bundled logo asset** — the admin-screen logo now ships with the plugin (`includes/branding/assets/perrylabs-logomark.png`). The S3-hosted logo is used only as a fallback if the bundled file is somehow missing. Plugin no longer has an external runtime asset dependency.
+* New: **Branding is opt-in.** Default install shows a neutral "Cookie Notice Settings" header and a compact "Plugin by PerryLabs" attribution line. Toggle "Admin branding" on the General tab to enable the full PerryLabs logo header + footer (useful on PerryLabs-managed sites).
+* Updated tested-up-to to 6.8.
+
 = 3.3.1 =
 * New: `wp plcn scan` WP-CLI command (--format=json|csv|pretty).
 * New: per-script "Cookies" field in the Scripts admin form — one cookie per line as `name | purpose | duration | provider`. Pre-filled from the known-cookie DB when picking a preset.
@@ -144,6 +149,9 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 * Initial release — simple implied-consent notice.
 
 == Upgrade Notice ==
+
+= 3.4.0 =
+Bundles the admin logo locally (no external runtime dependency) and makes PerryLabs branding opt-in via a new General-tab toggle. Existing installs that want the branded look can enable it under Settings → Cookie Notice → General → Admin branding.
 
 = 3.3.0 =
 Adds the cookie scanner, per-cookie metadata, privacy policy page generator, custom categories, and translation readiness. Settings preserved.

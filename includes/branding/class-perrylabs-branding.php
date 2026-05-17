@@ -3,12 +3,20 @@
  * PerryLabs Branding helper for WordPress plugins.
  *
  * Source of truth: /_ops/branding/class-perrylabs-branding.php
- * Version: 1.0.0
+ * Version: 1.1.0
  *
- * Copy this file into your plugin (e.g. includes/branding/), require_once it,
- * and call PerryLabs_Branding::header( 'My Plugin' ) / ::footer() from your
- * admin templates. tokens.css is also bundled and should be enqueued via
- * PerryLabs_Branding::enqueue_tokens().
+ * Copy this file into your plugin (e.g. includes/branding/) together with the
+ * `assets/perrylabs-logomark.png` image and `tokens.css`. The helper uses
+ * `plugin_dir_url( __FILE__ )` to find the bundled image at runtime so it
+ * works on any install without external dependencies. S3-hosted logo is used
+ * only as a fallback if the local file is missing.
+ *
+ * Usage:
+ *   require_once __DIR__ . '/branding/class-perrylabs-branding.php';
+ *   PerryLabs_Branding::enqueue_tokens( PLUGIN_URL . 'includes/branding/tokens.css', VERSION );
+ *   PerryLabs_Branding::header( 'My Plugin', VERSION );
+ *   // ... admin content ...
+ *   PerryLabs_Branding::footer();
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -19,10 +27,20 @@ if ( ! class_exists( 'PerryLabs_Branding' ) ) :
 
 class PerryLabs_Branding {
 
-    const VERSION       = '1.0.0';
+    const VERSION       = '1.1.0';
     const PERRYLABS_URL = 'https://perrylabs.io';
     const PERSONAL_URL  = 'https://jasonmperry.com';
-    const LOGOMARK_URL  = 'https://perrylabs-assets.s3.us-east-1.amazonaws.com/PerryLabs-LogoMark.png';
+
+    /**
+     * URL to the bundled logo. Tries the local copy first; falls back to S3.
+     */
+    public static function logo_url(): string {
+        $local_file = __DIR__ . '/assets/perrylabs-logomark.png';
+        if ( is_readable( $local_file ) ) {
+            return plugin_dir_url( __FILE__ ) . 'assets/perrylabs-logomark.png';
+        }
+        return 'https://perrylabs-assets.s3.us-east-1.amazonaws.com/PerryLabs-LogoMark.png';
+    }
 
     /**
      * Enqueue the tokens.css that ships with the plugin.
@@ -44,7 +62,7 @@ class PerryLabs_Branding {
         ?>
         <div class="pl-admin-header">
             <a href="<?php echo esc_url( self::PERRYLABS_URL ); ?>" target="_blank" rel="noopener noreferrer">
-                <img src="<?php echo esc_url( self::LOGOMARK_URL ); ?>" alt="PerryLabs" />
+                <img src="<?php echo esc_url( self::logo_url() ); ?>" alt="PerryLabs" />
             </a>
             <h1><?php echo esc_html( $title ); ?></h1>
             <?php if ( $plugin_version ) : ?>
@@ -61,12 +79,27 @@ class PerryLabs_Branding {
         ?>
         <div class="pl-admin-footer">
             <a class="pl-built-by" href="<?php echo esc_url( self::PERRYLABS_URL ); ?>" target="_blank" rel="noopener noreferrer">
-                <img src="<?php echo esc_url( self::LOGOMARK_URL ); ?>" alt="PerryLabs" />
+                <img src="<?php echo esc_url( self::logo_url() ); ?>" alt="PerryLabs" />
                 <span><?php esc_html_e( 'Built by PerryLabs', 'perrylabs' ); ?></span>
             </a>
             <span class="pl-sep">|</span>
             <a href="<?php echo esc_url( self::PERSONAL_URL ); ?>" target="_blank" rel="noopener noreferrer">jasonmperry.com</a>
         </div>
+        <?php
+    }
+
+    /**
+     * Compact attribution line — a single muted text link, suitable as a
+     * default for shareable plugins where the full branded header/footer
+     * would be intrusive.
+     */
+    public static function attribution(): void {
+        ?>
+        <p class="pl-attribution" style="margin-top:18px;color:#646970;font-size:12px;">
+            <a href="<?php echo esc_url( self::PERRYLABS_URL ); ?>" target="_blank" rel="noopener noreferrer" style="color:#646970;text-decoration:none;">
+                <?php esc_html_e( 'Plugin by PerryLabs', 'perrylabs' ); ?>
+            </a>
+        </p>
         <?php
     }
 

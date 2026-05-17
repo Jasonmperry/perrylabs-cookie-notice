@@ -59,6 +59,9 @@ class PLCN_Settings {
             'strings'                => array(),
             // v3.3.0 additions
             'custom_categories'      => array(),
+            // v3.4.0: PerryLabs branding off by default for portability.
+            // Site owners can opt in via Settings → Cookie Notice → General.
+            'show_branding'          => 0,
         );
     }
 
@@ -122,6 +125,7 @@ class PLCN_Settings {
         $sanitized['google_consent_wait_ms'] = max( 0, min( 5000, absint( $input['google_consent_wait_ms'] ?? 500 ) ) );
         $sanitized['log_consent']            = ! empty( $input['log_consent'] ) ? 1 : 0;
         $sanitized['skip_for_admins']        = ! empty( $input['skip_for_admins'] ) ? 1 : 0;
+        $sanitized['show_branding']          = ! empty( $input['show_branding'] ) ? 1 : 0;
         $sanitized['honor_dnt']              = ! empty( $input['honor_dnt'] ) ? 1 : 0;
         $sanitized['privacy_policy_url']     = esc_url_raw( $input['privacy_policy_url'] ?? '' );
         $sanitized['skip_urls']              = sanitize_textarea_field( $input['skip_urls'] ?? '' );
@@ -510,9 +514,20 @@ class PLCN_Settings {
 
         $options    = get_option( self::OPTION_NAME, self::defaults() );
         $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'general';
+        $branded = ! empty( $options['show_branding'] );
         ?>
         <div class="wrap">
-            <?php PerryLabs_Branding::header( __( 'Cookie Monster Settings', 'perrylabs-cookie-notice' ), PL_COOKIE_VERSION ); ?>
+            <?php
+            if ( $branded ) {
+                PerryLabs_Branding::header( __( 'Cookie Monster Settings', 'perrylabs-cookie-notice' ), PL_COOKIE_VERSION );
+            } else {
+                printf(
+                    '<h1 style="margin-bottom:10px;">%s <span style="color:#646970;font-size:12px;font-weight:400;font-family:monospace;">v%s</span></h1>',
+                    esc_html__( 'Cookie Notice Settings', 'perrylabs-cookie-notice' ),
+                    esc_html( PL_COOKIE_VERSION )
+                );
+            }
+            ?>
 
             <nav class="nav-tab-wrapper" style="margin-bottom:16px;">
                 <?php
@@ -553,7 +568,13 @@ class PLCN_Settings {
             }
             ?>
 
-            <?php PerryLabs_Branding::footer(); ?>
+            <?php
+            if ( $branded ) {
+                PerryLabs_Branding::footer();
+            } else {
+                PerryLabs_Branding::attribution();
+            }
+            ?>
         </div>
         <?php
     }
@@ -657,6 +678,14 @@ class PLCN_Settings {
                     <td>
                         <input type="checkbox" id="plcn_skip_for_admins" name="plcn_options[skip_for_admins]" value="1" <?php checked( 1, $options['skip_for_admins'] ?? 1 ); ?> />
                         <label for="plcn_skip_for_admins"><?php esc_html_e( 'Hide the banner from logged-in admin users', 'perrylabs-cookie-notice' ); ?></label>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="plcn_show_branding"><?php esc_html_e( 'Admin branding', 'perrylabs-cookie-notice' ); ?></label></th>
+                    <td>
+                        <input type="checkbox" id="plcn_show_branding" name="plcn_options[show_branding]" value="1" <?php checked( 1, $options['show_branding'] ?? 0 ); ?> />
+                        <label for="plcn_show_branding"><?php esc_html_e( 'Show full PerryLabs branding on this settings screen (logo header + footer).', 'perrylabs-cookie-notice' ); ?></label>
+                        <p class="description"><?php esc_html_e( 'Off by default for clean installs. When off, a compact "Plugin by PerryLabs" attribution remains at the bottom.', 'perrylabs-cookie-notice' ); ?></p>
                     </td>
                 </tr>
             </table>

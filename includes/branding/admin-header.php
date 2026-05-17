@@ -16,8 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $pl_title   = $pl_title   ?? '';
 $pl_version = $pl_version ?? '';
-$pl_logo    = 'https://perrylabs-assets.s3.us-east-1.amazonaws.com/PerryLabs-LogoMark.png';
 $pl_url     = 'https://perrylabs.io';
+
+// Prefer the bundled logo (no external dependency); fall back to S3.
+if ( is_readable( __DIR__ . '/assets/perrylabs-logomark.png' ) ) {
+    $pl_logo = plugin_dir_url( __FILE__ ) . 'assets/perrylabs-logomark.png';
+} else {
+    $pl_logo = 'https://perrylabs-assets.s3.us-east-1.amazonaws.com/PerryLabs-LogoMark.png';
+}
 ?>
 <div class="pl-admin-header">
     <a href="<?php echo esc_url( $pl_url ); ?>" target="_blank" rel="noopener noreferrer">

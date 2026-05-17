@@ -196,10 +196,16 @@ class PLCN_Settings {
                     $inline = str_replace( '%s', $service_id, $inline );
                 }
 
+                $cookies = $this->parse_cookies_textarea( $_POST['script_cookies'] ?? '' );
+                if ( empty( $cookies ) ) {
+                    // If admin didn't enter cookies and the handle matches a known service, fall back to the DB.
+                    $cookies = PLCN_Cookie_DB::for_service( $handle );
+                }
+
                 $config = array(
                     'handle'     => $handle,
                     'label'      => sanitize_text_field( $_POST['script_label'] ?? $handle ),
-                    'category'   => in_array( $_POST['script_category'] ?? '', array( 'required', 'analytics', 'marketing', 'other' ), true )
+                    'category'   => PLCN_Consent::instance()->is_valid_category( $_POST['script_category'] ?? '' )
                         ? $_POST['script_category']
                         : 'other',
                     'service_id' => $service_id,
@@ -209,6 +215,7 @@ class PLCN_Settings {
                     'load_in'    => in_array( $_POST['script_load_in'] ?? '', array( 'head', 'footer' ), true )
                         ? $_POST['script_load_in']
                         : 'head',
+                    'cookies'    => $cookies,
                 );
 
                 PLCN_Script_Registry::save_script( $handle, $config );
@@ -360,6 +367,47 @@ class PLCN_Settings {
 
         wp_safe_redirect( admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=tools&page_generated=' . (int) $page_id ) );
         exit;
+    }
+
+    /**
+     * Parse the cookies textarea on the Scripts form. One cookie per line:
+     *
+     *   name | purpose | duration | provider
+     *
+     * Pipes can be tabs or commas. Missing trailing fields default to ''.
+     */
+    private function parse_cookies_textarea( string $raw ): array {
+        $raw = wp_unslash( $raw );
+        $out = array();
+        foreach ( preg_split( "/\r?\n/", $raw ) as $line ) {
+            $line = trim( $line );
+            if ( '' === $line || '#' === $line[0] ) continue;
+            $parts = preg_split( '/\s*[|]\s*/', $line );
+            if ( empty( $parts[0] ) ) continue;
+            $out[] = array(
+                'name'     => sanitize_text_field( $parts[0] ?? '' ),
+                'purpose'  => sanitize_text_field( $parts[1] ?? '' ),
+                'duration' => sanitize_text_field( $parts[2] ?? '' ),
+                'provider' => sanitize_text_field( $parts[3] ?? '' ),
+            );
+        }
+        return $out;
+    }
+
+    /**
+     * Render a cookies array back to the textarea format used by the form.
+     */
+    private function cookies_to_textarea( array $cookies ): string {
+        $lines = array();
+        foreach ( $cookies as $c ) {
+            $lines[] = trim( implode( ' | ', array(
+                $c['name']     ?? '',
+                $c['purpose']  ?? '',
+                $c['duration'] ?? '',
+                $c['provider'] ?? '',
+            ) ), ' |' );
+        }
+        return implode( "\n", $lines );
     }
 
     public static function default_privacy_page_content(): string {
@@ -935,6 +983,15 @@ class PLCN_Settings {
         $f_attrs      = $edit_data ? implode( ',', (array) ( $edit_data['attrs'] ?? array() ) ) : ( $preset ? implode( ',', $preset['attrs'] ?? array() ) : '' );
         $f_load_in    = $edit_data ? ( $edit_data['load_in'] ?? 'head' ) : ( $preset ? ( $preset['load_in'] ?? 'head' ) : 'head' );
         $id_label     = $preset['id_label'] ?? 'Service ID';
+
+        // Cookies textarea: existing per-script entries take priority, else preset DB.
+        if ( $edit_data && ! empty( $edit_data['cookies'] ) ) {
+            $f_cookies_text = $this->cookies_to_textarea( $edit_data['cookies'] );
+        } elseif ( $preset_key ) {
+            $f_cookies_text = $this->cookies_to_textarea( PLCN_Cookie_DB::for_service( $preset_key ) );
+        } else {
+            $f_cookies_text = '';
+        }
         ?>
 
         <form method="post" action="<?php echo esc_url( admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=scripts' ) ); ?>">
@@ -979,6 +1036,13 @@ class PLCN_Settings {
                 <tr>
                     <th scope="row"><label for="script_attrs"><?php esc_html_e( 'Script Attributes', 'perrylabs-cookie-notice' ); ?></label></th>
                     <td><input type="text" id="script_attrs" name="script_attrs" value="<?php echo esc_attr( $f_attrs ); ?>" class="regular-text" placeholder="async,defer" /></td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="script_cookies"><?php esc_html_e( 'Cookies (one per line)', 'perrylabs-cookie-notice' ); ?></label></th>
+                    <td>
+                        <textarea id="script_cookies" name="script_cookies" rows="5" class="large-text code" placeholder="_ga | Unique visitor ID | 2 years | Google"><?php echo esc_textarea( $f_cookies_text ); ?></textarea>
+                        <p class="description"><?php esc_html_e( 'Format per line: name | purpose | duration | provider. Pre-filled from the known-cookie DB when you pick a preset; leave blank to keep auto-detection.', 'perrylabs-cookie-notice' ); ?></p>
+                    </td>
                 </tr>
                 <tr>
                     <th scope="row"><label for="script_load_in"><?php esc_html_e( 'Load In', 'perrylabs-cookie-notice' ); ?></label></th>

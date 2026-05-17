@@ -96,6 +96,74 @@ class PLCN_CLI {
     }
 
     /**
+     * Run the cookie scanner and dump the result.
+     *
+     * ## OPTIONS
+     *
+     * [<urls>...]
+     * : Optional list of URLs to scan. Defaults to the site's home page.
+     *
+     * [--format=<format>]
+     * : Output format: pretty (default), json, csv.
+     *
+     * ## EXAMPLES
+     *
+     *     wp plcn scan
+     *     wp plcn scan https://example.com/ https://example.com/contact/
+     *     wp plcn scan --format=json
+     */
+    public function scan( $args, $assoc_args ): void {
+        $urls   = ! empty( $args ) ? $args : array( home_url( '/' ) );
+        $result = PLCN_Scanner::instance()->scan( $urls );
+        $format = $assoc_args['format'] ?? 'pretty';
+
+        if ( 'json' === $format ) {
+            echo wp_json_encode( $result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n";
+            return;
+        }
+
+        if ( 'csv' === $format ) {
+            $out = fopen( 'php://output', 'w' );
+            fputcsv( $out, array( 'cookie', 'service', 'category', 'duration', 'count', 'first_seen_on' ) );
+            foreach ( $result['cookies'] as $c ) {
+                fputcsv( $out, array( $c['name'], $c['service'], $c['category'], $c['duration'], $c['count'], $c['first_seen_on'] ) );
+            }
+            fclose( $out );
+            return;
+        }
+
+        WP_CLI::log( "Scanned at: {$result['finished_at']}" );
+        WP_CLI::log( "Pages: " . count( $result['urls'] ) );
+        WP_CLI::log( "Cookies: " . count( $result['cookies'] ) );
+        if ( ! empty( $result['cookies'] ) ) {
+            $rows = array();
+            foreach ( $result['cookies'] as $c ) {
+                $rows[] = array(
+                    'cookie'   => $c['name'],
+                    'service'  => $c['service'] ?: '—',
+                    'category' => $c['category'],
+                    'duration' => $c['duration'],
+                );
+            }
+            WP_CLI\Utils\format_items( 'table', $rows, array( 'cookie', 'service', 'category', 'duration' ) );
+        }
+        if ( ! empty( $result['signatures'] ) ) {
+            WP_CLI::log( '' );
+            WP_CLI::log( 'Tracker signatures detected in HTML:' );
+            foreach ( $result['signatures'] as $service => $urls ) {
+                WP_CLI::log( "  - {$service} (on " . count( $urls ) . ' page(s))' );
+            }
+        }
+        if ( ! empty( $result['errors'] ) ) {
+            WP_CLI::log( '' );
+            WP_CLI::warning( 'Errors:' );
+            foreach ( $result['errors'] as $e ) {
+                WP_CLI::warning( "  {$e['url']} — {$e['error']}" );
+            }
+        }
+    }
+
+    /**
      * Manage the consent log.
      *
      * ## OPTIONS

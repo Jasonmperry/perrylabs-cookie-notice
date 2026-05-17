@@ -4,7 +4,7 @@ Tags: cookies, consent, gdpr, ccpa, privacy, google consent mode, cookie banner
 Requires at least: 5.8
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 3.3.0
+Stable tag: 3.3.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -83,6 +83,10 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 6. Consent Log — audit trail of consent decisions.
 
 == Changelog ==
+
+= 3.3.1 =
+* New: `wp plcn scan` WP-CLI command (--format=json|csv|pretty).
+* New: per-script "Cookies" field in the Scripts admin form — one cookie per line as `name | purpose | duration | provider`. Pre-filled from the known-cookie DB when picking a preset.
 
 = 3.3.0 =
 * New: **Cookie scanner** — crawl the home page (and any additional URLs you list) and surface every cookie that gets set, matched against a known-cookie database for automatic service/category attribution. Detects tracker signatures (gtag, fbevents, GTM, HubSpot, Stripe.js, etc.) in HTML even when cookies are set client-side.

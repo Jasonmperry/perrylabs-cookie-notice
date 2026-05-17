@@ -14,11 +14,15 @@ A consent banner that just sets a cookie does nothing to stop third-party script
 
 ## Features
 
-- 4-category consent: Strictly Necessary, Analytics, Marketing, Other
+- 4 built-in categories (Strictly Necessary / Analytics / Marketing / Other) + **custom categories** defined per site
 - Equal-prominence **Accept All / Reject All** buttons (2022+ EU compliance)
 - **Iframe / embed blocker** — YouTube, Vimeo, Maps, X, Facebook, Instagram, SoundCloud, Spotify
+- **Cookie scanner** — crawls front page + listed URLs, matches discovered cookies against a known-cookie database, surfaces unknown trackers
+- **Per-cookie metadata** (name, purpose, duration, provider) in the cookie policy table
+- **Privacy Policy page generator** — creates a draft WP page with the cookie list and standard disclosures
 - **Every string customizable** via a dedicated Messages tab — good defaults preserved
 - **Privacy Policy URL** auto-injects a link into the banner message
+- **Translation-ready** — `.pot` template + `tools/make-pot.sh`
 - **Do Not Track + Global Privacy Control** honored (banner skipped, scripts blocked, Consent Mode set to denied)
 - **URL skip patterns** — exclude banner from checkout / login / etc.
 - **Custom CSS** textarea for theming without forking

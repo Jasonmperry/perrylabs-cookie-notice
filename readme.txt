@@ -4,7 +4,7 @@ Tags: cookies, consent, gdpr, ccpa, privacy, google consent mode, cookie banner
 Requires at least: 5.8
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 3.2.0
+Stable tag: 3.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -84,6 +84,15 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 
 == Changelog ==
 
+= 3.3.0 =
+* New: **Cookie scanner** — crawl the home page (and any additional URLs you list) and surface every cookie that gets set, matched against a known-cookie database for automatic service/category attribution. Detects tracker signatures (gtag, fbevents, GTM, HubSpot, Stripe.js, etc.) in HTML even when cookies are set client-side.
+* New: **Per-cookie metadata** — each registered script now carries an explicit list of cookies (name, purpose, duration, provider) which the `[plcn_cookie_policy]` shortcode renders as a per-cookie table.
+* New: **Known-cookie database** (`PLCN_Cookie_DB`) — GA4, GTM, Facebook Pixel, LinkedIn Insight, HubSpot, Stripe, Cloudflare, YouTube, Vimeo, WordPress core. Regex name patterns supported.
+* New: **Privacy Policy page generator** — Tools tab button creates (or refreshes) a draft "Cookie Policy" WP page populated with the cookie list, settings link, CCPA opt-out, and DNT/GPC disclosure.
+* New: **Custom categories** — admins can define additional consent categories beyond the built-in Strictly Necessary / Analytics / Marketing / Other (e.g. Personalization, Social, Functional).
+* New: **Translation-ready** — `load_plugin_textdomain`, seed `.pot` file in `languages/`, and `tools/make-pot.sh` for regenerating from source via WP-CLI.
+* New: Stripe.js added to Quick Add presets (category: required).
+
 = 3.2.0 =
 * New: every user-facing string is admin-customizable on a dedicated **Messages** tab (banner title, message, button labels, category labels, modal copy, embed placeholder, CCPA opt-out) — good defaults preserved.
 * New: **Privacy Policy URL** setting auto-injects a styled "privacy policy" link into the banner message.
@@ -131,6 +140,9 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 * Initial release — simple implied-consent notice.
 
 == Upgrade Notice ==
+
+= 3.3.0 =
+Adds the cookie scanner, per-cookie metadata, privacy policy page generator, custom categories, and translation readiness. Settings preserved.
 
 = 3.2.0 =
 Enterprise hardening: every string customizable, REST API, WP-CLI, CSV log export, JSON settings export/import, DNT/GPC honor, URL skip patterns, custom CSS, capability filter, live admin preview. Settings preserved.

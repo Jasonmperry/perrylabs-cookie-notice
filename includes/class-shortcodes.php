@@ -98,17 +98,43 @@ class PLCN_Shortcodes {
                         <tr>
                             <th><?php echo esc_html( PLCN_Strings::get( 'policy_col_service' ) ); ?></th>
                             <th><?php echo esc_html( PLCN_Strings::get( 'policy_col_provider' ) ); ?></th>
+                            <th><?php esc_html_e( 'Cookies set', 'perrylabs-cookie-notice' ); ?></th>
+                            <th><?php esc_html_e( 'Purpose / duration', 'perrylabs-cookie-notice' ); ?></th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ( $by_cat[ $cat ] as $script ) :
                             $provider = $this->guess_provider( $script );
-                            ?>
-                            <tr>
-                                <td><?php echo esc_html( $script['label'] ?? $script['handle'] ?? '' ); ?></td>
-                                <td><?php echo esc_html( $provider ); ?></td>
-                            </tr>
-                        <?php endforeach; ?>
+                            $cookies  = $script['cookies'] ?? array();
+
+                            // If no per-script cookies were stored, fall back to the known-cookie DB.
+                            if ( empty( $cookies ) ) {
+                                $service_key = isset( $script['handle'] ) ? $script['handle'] : '';
+                                $cookies     = PLCN_Cookie_DB::for_service( $service_key );
+                            }
+
+                            $row_count = max( 1, count( $cookies ) );
+                            $first     = true;
+                            if ( empty( $cookies ) ) : ?>
+                                <tr>
+                                    <td><?php echo esc_html( $script['label'] ?? $script['handle'] ?? '' ); ?></td>
+                                    <td><?php echo esc_html( $provider ); ?></td>
+                                    <td colspan="2"><em><?php esc_html_e( 'No cookies declared.', 'perrylabs-cookie-notice' ); ?></em></td>
+                                </tr>
+                            <?php else :
+                                foreach ( $cookies as $cookie ) : ?>
+                                    <tr>
+                                        <?php if ( $first ) : ?>
+                                            <td rowspan="<?php echo (int) $row_count; ?>"><?php echo esc_html( $script['label'] ?? $script['handle'] ?? '' ); ?></td>
+                                            <td rowspan="<?php echo (int) $row_count; ?>"><?php echo esc_html( $provider ); ?></td>
+                                            <?php $first = false; ?>
+                                        <?php endif; ?>
+                                        <td><code><?php echo esc_html( $cookie['name'] ?? '' ); ?></code></td>
+                                        <td><?php echo esc_html( ( $cookie['purpose'] ?? '' ) . ( ! empty( $cookie['duration'] ) ? ' · ' . $cookie['duration'] : '' ) ); ?></td>
+                                    </tr>
+                                <?php endforeach;
+                            endif;
+                        endforeach; ?>
                     </tbody>
                 </table>
             <?php endforeach; ?>

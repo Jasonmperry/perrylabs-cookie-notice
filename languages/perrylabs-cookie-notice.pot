@@ -1,0 +1,193 @@
+# Copyright (C) 2026 PerryLabs
+# This file is distributed under the GPL-2.0-or-later license.
+msgid ""
+msgstr ""
+"Project-Id-Version: PerryLabs Cookie Notice 3.3.0\n"
+"Report-Msgid-Bugs-To: https://github.com/Jasonmperry/perrylabs-cookie-notice/issues\n"
+"POT-Creation-Date: 2026-05-16T22:00:00+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: \n"
+"X-Domain: perrylabs-cookie-notice\n"
+
+#. Note: this is a seed file. Run `bash tools/make-pot.sh` to regenerate from
+#. the full source. The strings below are a curated subset that translators
+#. should prioritize because they appear in front-of-customer surfaces.
+
+# === Admin ===
+
+msgid "Cookie Notice"
+msgstr ""
+
+msgid "Cookie Monster Settings"
+msgstr ""
+
+msgid "General"
+msgstr ""
+
+msgid "Messages"
+msgstr ""
+
+msgid "Scripts & Pixels"
+msgstr ""
+
+msgid "Gated Handles"
+msgstr ""
+
+msgid "Embed Blocker"
+msgstr ""
+
+msgid "Scanner"
+msgstr ""
+
+msgid "Advanced"
+msgstr ""
+
+msgid "Consent Log"
+msgstr ""
+
+msgid "Tools"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
+
+# === Banner labels (default values; admins can override per site) ===
+
+msgid "Accept All"
+msgstr ""
+
+msgid "Reject All"
+msgstr ""
+
+msgid "Customize"
+msgstr ""
+
+msgid "Got it"
+msgstr ""
+
+msgid "privacy policy"
+msgstr ""
+
+# === Preferences modal ===
+
+msgid "Cookie Preferences"
+msgstr ""
+
+msgid "Save Preferences"
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
+
+msgid "Cookie notice"
+msgstr ""
+
+# === Category labels ===
+
+msgid "Strictly Necessary"
+msgstr ""
+
+msgid "Analytics"
+msgstr ""
+
+msgid "Marketing"
+msgstr ""
+
+msgid "Other"
+msgstr ""
+
+msgid "Required"
+msgstr ""
+
+# === Embed blocker ===
+
+msgid "Load this content"
+msgstr ""
+
+msgid "Manage preferences"
+msgstr ""
+
+# === CCPA ===
+
+msgid "Do Not Sell My Personal Information"
+msgstr ""
+
+# === Cookie policy shortcode ===
+
+msgid "Service"
+msgstr ""
+
+msgid "Provider"
+msgstr ""
+
+msgid "Cookies set"
+msgstr ""
+
+msgid "Purpose / duration"
+msgstr ""
+
+msgid "No third-party cookies are configured on this site."
+msgstr ""
+
+msgid "No cookies declared."
+msgstr ""
+
+msgid "Cookie Policy"
+msgstr ""
+
+msgid "Cookie Settings"
+msgstr ""
+
+# === Scanner ===
+
+msgid "Run scan"
+msgstr ""
+
+msgid "Scan complete."
+msgstr ""
+
+msgid "URLs to scan"
+msgstr ""
+
+msgid "Cookies observed via Set-Cookie headers"
+msgstr ""
+
+msgid "Tracker signatures detected in HTML"
+msgstr ""
+
+msgid "Add to registry"
+msgstr ""
+
+msgid "unknown"
+msgstr ""
+
+# === Tools ===
+
+msgid "Generate Cookie Policy page"
+msgstr ""
+
+msgid "Generate / refresh page"
+msgstr ""
+
+msgid "Bump Policy Version"
+msgstr ""
+
+msgid "Re-prompt every visitor on their next visit?"
+msgstr ""
+
+msgid "Clear my consent + open front page"
+msgstr ""
+
+msgid "Download settings JSON"
+msgstr ""
+
+msgid "Export CSV"
+msgstr ""
+
+msgid "Import"
+msgstr ""

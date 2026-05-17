@@ -23,9 +23,12 @@ class PLCN_Settings {
         add_action( 'admin_init', array( $this, 'handle_script_actions' ) );
         add_action( 'admin_init', array( $this, 'handle_gated_actions' ) );
         add_action( 'admin_init', array( $this, 'handle_admin_actions' ) );
+        add_action( 'admin_init', array( $this, 'handle_scanner_actions' ) );
+        add_action( 'admin_init', array( $this, 'handle_custom_categories_actions' ) );
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
         add_action( 'admin_post_plcn_import_settings', array( $this, 'handle_import' ) );
         add_action( 'admin_post_plcn_export_settings', array( $this, 'handle_export' ) );
+        add_action( 'admin_post_plcn_generate_privacy_page', array( $this, 'handle_generate_privacy_page' ) );
     }
 
     public static function defaults(): array {
@@ -54,6 +57,8 @@ class PLCN_Settings {
             'skip_urls'              => '',
             'custom_css'             => '',
             'strings'                => array(),
+            // v3.3.0 additions
+            'custom_categories'      => array(),
         );
     }
 
@@ -131,6 +136,21 @@ class PLCN_Settings {
             }
         }
         $sanitized['strings'] = $clean_strings;
+
+        // Custom categories — array of array( 'label' => ..., 'description' => ... ) keyed by slug.
+        $custom_input = (array) ( $input['custom_categories'] ?? array() );
+        $clean_custom = array();
+        foreach ( $custom_input as $slug => $row ) {
+            $slug = sanitize_key( $slug );
+            // Reserve built-in slugs — admins can't shadow them.
+            if ( in_array( $slug, PLCN_Consent::BUILTIN_CATEGORIES, true ) ) continue;
+            if ( '' === $slug ) continue;
+            $clean_custom[ $slug ] = array(
+                'label'       => sanitize_text_field( $row['label']       ?? $slug ),
+                'description' => sanitize_text_field( $row['description'] ?? '' ),
+            );
+        }
+        $sanitized['custom_categories'] = $clean_custom;
 
         $allowed_providers = array_keys( PLCN_Embed_Blocker::PROVIDERS );
         $sanitized['embed_blocker'] = array_values( array_intersect(
@@ -235,6 +255,135 @@ class PLCN_Settings {
         }
     }
 
+    public function handle_custom_categories_actions(): void {
+        if ( ! current_user_can( plcn_manage_capability() ) ) return;
+        if ( empty( $_GET['page'] ) || self::PAGE_SLUG !== $_GET['page'] ) return;
+
+        // Add or update.
+        if ( ! empty( $_POST['plcn_save_category'] ) && ! empty( $_POST['_wpnonce'] ) ) {
+            if ( wp_verify_nonce( $_POST['_wpnonce'], 'plcn_save_category' ) ) {
+                $slug  = sanitize_key( $_POST['cat_slug'] ?? '' );
+                $label = sanitize_text_field( $_POST['cat_label'] ?? '' );
+                $desc  = sanitize_text_field( $_POST['cat_description'] ?? '' );
+
+                if ( $slug && ! in_array( $slug, PLCN_Consent::BUILTIN_CATEGORIES, true ) ) {
+                    $opts = get_option( self::OPTION_NAME, self::defaults() );
+                    if ( ! isset( $opts['custom_categories'] ) ) $opts['custom_categories'] = array();
+                    $opts['custom_categories'][ $slug ] = array(
+                        'label'       => $label ?: ucwords( str_replace( array( '-', '_' ), ' ', $slug ) ),
+                        'description' => $desc,
+                    );
+                    update_option( self::OPTION_NAME, $opts );
+                    wp_safe_redirect( admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=messages&cat_saved=1' ) );
+                    exit;
+                }
+                wp_safe_redirect( admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=messages&cat_error=1' ) );
+                exit;
+            }
+        }
+
+        // Delete.
+        if ( ! empty( $_GET['plcn_delete_category'] ) && ! empty( $_GET['_wpnonce'] ) ) {
+            if ( wp_verify_nonce( $_GET['_wpnonce'], 'plcn_delete_category' ) ) {
+                $slug = sanitize_key( $_GET['plcn_delete_category'] );
+                if ( $slug && ! in_array( $slug, PLCN_Consent::BUILTIN_CATEGORIES, true ) ) {
+                    $opts = get_option( self::OPTION_NAME, self::defaults() );
+                    unset( $opts['custom_categories'][ $slug ] );
+                    update_option( self::OPTION_NAME, $opts );
+                    wp_safe_redirect( admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=messages&cat_deleted=1' ) );
+                    exit;
+                }
+            }
+        }
+    }
+
+    public function handle_scanner_actions(): void {
+        if ( ! current_user_can( plcn_manage_capability() ) ) return;
+        if ( empty( $_GET['page'] ) || self::PAGE_SLUG !== $_GET['page'] ) return;
+        if ( empty( $_POST['plcn_run_scan'] ) || empty( $_POST['_wpnonce'] ) ) return;
+        if ( ! wp_verify_nonce( $_POST['_wpnonce'], 'plcn_run_scan' ) ) return;
+
+        $raw = sanitize_textarea_field( $_POST['plcn_scan_urls'] ?? '' );
+        $urls = array_values( array_filter( array_map( 'trim', explode( "\n", $raw ) ) ) );
+        if ( empty( $urls ) ) {
+            $urls = array( home_url( '/' ) );
+        }
+
+        PLCN_Scanner::instance()->scan( $urls );
+        wp_safe_redirect( admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=scanner&scanned=1' ) );
+        exit;
+    }
+
+    /**
+     * Create or refresh a "Cookie Policy" WP page populated with the
+     * [plcn_cookie_policy] shortcode. Idempotent: re-running won't duplicate
+     * pages but will overwrite the content of the previously generated one.
+     */
+    public function handle_generate_privacy_page(): void {
+        if ( ! current_user_can( plcn_manage_capability() ) ) wp_die( 'Forbidden', 403 );
+        check_admin_referer( 'plcn_generate_privacy_page' );
+
+        $existing_id = (int) get_option( 'plcn_privacy_page_id', 0 );
+        $exists      = $existing_id ? get_post( $existing_id ) : null;
+
+        $content = self::default_privacy_page_content();
+
+        if ( $exists && 'page' === $exists->post_type ) {
+            wp_update_post( array(
+                'ID'           => $existing_id,
+                'post_content' => $content,
+                'post_status'  => 'publish' === $exists->post_status ? 'publish' : 'draft',
+            ) );
+            $page_id = $existing_id;
+        } else {
+            $page_id = wp_insert_post( array(
+                'post_title'   => __( 'Cookie Policy', 'perrylabs-cookie-notice' ),
+                'post_name'    => 'cookie-policy',
+                'post_content' => $content,
+                'post_status'  => 'draft', // user reviews before publishing
+                'post_type'    => 'page',
+            ) );
+            if ( ! is_wp_error( $page_id ) ) {
+                update_option( 'plcn_privacy_page_id', (int) $page_id );
+
+                // Wire the Privacy Policy URL setting if it's empty.
+                $opts = get_option( self::OPTION_NAME, self::defaults() );
+                if ( empty( $opts['privacy_policy_url'] ) ) {
+                    $opts['privacy_policy_url'] = get_permalink( $page_id );
+                    update_option( self::OPTION_NAME, $opts );
+                }
+            } else {
+                wp_safe_redirect( admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=tools&page_error=1' ) );
+                exit;
+            }
+        }
+
+        wp_safe_redirect( admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=tools&page_generated=' . (int) $page_id ) );
+        exit;
+    }
+
+    public static function default_privacy_page_content(): string {
+        $site = get_bloginfo( 'name' );
+        $body = "<!-- wp:paragraph --><p>This page describes the cookies and similar technologies used on " . esc_html( $site ) . ", as required by the EU ePrivacy Directive, GDPR, and CCPA.</p><!-- /wp:paragraph -->\n\n";
+        $body .= "<!-- wp:heading --><h2>What are cookies?</h2><!-- /wp:heading -->\n";
+        $body .= "<!-- wp:paragraph --><p>Cookies are small text files placed on your device by websites you visit. They are widely used to make websites work, or work more efficiently, and to provide information to the site's owners.</p><!-- /wp:paragraph -->\n\n";
+        $body .= "<!-- wp:heading --><h2>How we use cookies</h2><!-- /wp:heading -->\n";
+        $body .= "<!-- wp:paragraph --><p>We use cookies in the categories listed below. You can change your preferences at any time using the <strong>Cookie Settings</strong> link in our footer.</p><!-- /wp:paragraph -->\n\n";
+        $body .= "<!-- wp:shortcode -->\n[plcn_cookie_policy]\n<!-- /wp:shortcode -->\n\n";
+        $body .= "<!-- wp:heading --><h2>Managing your preferences</h2><!-- /wp:heading -->\n";
+        $body .= "<!-- wp:paragraph --><p>Use the button below to open your cookie preferences and change which categories you allow.</p><!-- /wp:paragraph -->\n";
+        $body .= "<!-- wp:shortcode -->\n[plcn_settings_link]\n<!-- /wp:shortcode -->\n\n";
+        $body .= "<!-- wp:heading --><h2>Do Not Track and Global Privacy Control</h2><!-- /wp:heading -->\n";
+        $body .= "<!-- wp:paragraph --><p>We honor Do Not Track (DNT) and Global Privacy Control (GPC) signals: when your browser sends one of these, we treat it as a refusal of all non-essential cookies.</p><!-- /wp:paragraph -->\n\n";
+        $body .= "<!-- wp:heading --><h2>California residents (CCPA)</h2><!-- /wp:heading -->\n";
+        $body .= "<!-- wp:paragraph --><p>If you reside in California, you have the right to opt out of the sale or sharing of your personal information. Use the link below to exercise this right.</p><!-- /wp:paragraph -->\n";
+        $body .= "<!-- wp:shortcode -->\n[plcn_ccpa_optout]\n<!-- /wp:shortcode -->\n\n";
+        $body .= "<!-- wp:heading --><h2>Changes to this policy</h2><!-- /wp:heading -->\n";
+        $body .= "<!-- wp:paragraph --><p>We may update this Cookie Policy from time to time. Material changes will be reflected by an updated date below. When we change the cookies we use, we will re-prompt you for consent on your next visit.</p><!-- /wp:paragraph -->\n";
+
+        return $body;
+    }
+
     public function handle_admin_actions(): void {
         if ( ! current_user_can( plcn_manage_capability() ) ) return;
         if ( empty( $_GET['page'] ) || self::PAGE_SLUG !== $_GET['page'] ) return;
@@ -325,6 +474,7 @@ class PLCN_Settings {
                     'scripts'  => __( 'Scripts & Pixels', 'perrylabs-cookie-notice' ),
                     'gated'    => __( 'Gated Handles', 'perrylabs-cookie-notice' ),
                     'embeds'   => __( 'Embed Blocker', 'perrylabs-cookie-notice' ),
+                    'scanner'  => __( 'Scanner', 'perrylabs-cookie-notice' ),
                     'advanced' => __( 'Advanced', 'perrylabs-cookie-notice' ),
                     'log'      => __( 'Consent Log', 'perrylabs-cookie-notice' ),
                     'tools'    => __( 'Tools', 'perrylabs-cookie-notice' ),
@@ -347,6 +497,7 @@ class PLCN_Settings {
                 case 'scripts':  $this->render_scripts_tab( $options ); break;
                 case 'gated':    $this->render_gated_tab( $options ); break;
                 case 'embeds':   $this->render_embeds_tab( $options ); break;
+                case 'scanner':  $this->render_scanner_tab( $options ); break;
                 case 'advanced': $this->render_advanced_tab( $options ); break;
                 case 'log':      $this->render_log_tab(); break;
                 case 'tools':    $this->render_tools_tab( $options ); break;
@@ -561,6 +712,77 @@ class PLCN_Settings {
             <?php endforeach; ?>
 
             <?php submit_button( __( 'Save Messages', 'perrylabs-cookie-notice' ) ); ?>
+        </form>
+
+        <?php
+        // Custom categories section.
+        if ( ! empty( $_GET['cat_saved'] ) ) {
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Category saved.', 'perrylabs-cookie-notice' ) . '</p></div>';
+        }
+        if ( ! empty( $_GET['cat_deleted'] ) ) {
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Category removed.', 'perrylabs-cookie-notice' ) . '</p></div>';
+        }
+        if ( ! empty( $_GET['cat_error'] ) ) {
+            echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Invalid category slug (cannot match a built-in: required, analytics, marketing, other).', 'perrylabs-cookie-notice' ) . '</p></div>';
+        }
+
+        $custom = $options['custom_categories'] ?? array();
+        ?>
+        <h2 style="margin-top:32px;"><?php esc_html_e( 'Custom categories', 'perrylabs-cookie-notice' ); ?></h2>
+        <p class="description"><?php esc_html_e( 'Add new categories beyond the built-in Required / Analytics / Marketing / Other. Useful for sites that need extras like "Personalization" or "Social".', 'perrylabs-cookie-notice' ); ?></p>
+
+        <?php if ( empty( $custom ) ) : ?>
+            <p class="description" style="margin-top:12px;"><?php esc_html_e( 'No custom categories defined.', 'perrylabs-cookie-notice' ); ?></p>
+        <?php else : ?>
+            <table class="widefat striped" style="max-width:780px;margin-top:12px;">
+                <thead>
+                    <tr>
+                        <th><?php esc_html_e( 'Slug', 'perrylabs-cookie-notice' ); ?></th>
+                        <th><?php esc_html_e( 'Label', 'perrylabs-cookie-notice' ); ?></th>
+                        <th><?php esc_html_e( 'Description', 'perrylabs-cookie-notice' ); ?></th>
+                        <th><?php esc_html_e( 'Actions', 'perrylabs-cookie-notice' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( $custom as $slug => $row ) :
+                        $delete = wp_nonce_url(
+                            admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=messages&plcn_delete_category=' . urlencode( $slug ) ),
+                            'plcn_delete_category'
+                        );
+                        ?>
+                        <tr>
+                            <td><code><?php echo esc_html( $slug ); ?></code></td>
+                            <td><?php echo esc_html( $row['label'] ?? '' ); ?></td>
+                            <td><?php echo esc_html( $row['description'] ?? '' ); ?></td>
+                            <td><a href="<?php echo esc_url( $delete ); ?>" style="color:#b32d2e;"><?php esc_html_e( 'Remove', 'perrylabs-cookie-notice' ); ?></a></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+
+        <h3 style="margin-top:20px;"><?php esc_html_e( 'Add a category', 'perrylabs-cookie-notice' ); ?></h3>
+        <form method="post" style="max-width:780px;">
+            <?php wp_nonce_field( 'plcn_save_category' ); ?>
+            <input type="hidden" name="plcn_save_category" value="1" />
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="cat_slug"><?php esc_html_e( 'Slug', 'perrylabs-cookie-notice' ); ?></label></th>
+                    <td>
+                        <input type="text" id="cat_slug" name="cat_slug" class="regular-text" pattern="[a-z0-9_-]+" placeholder="personalization" required />
+                        <p class="description"><?php esc_html_e( 'Lowercase letters, numbers, hyphens, underscores. Cannot be one of: required, analytics, marketing, other.', 'perrylabs-cookie-notice' ); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="cat_label"><?php esc_html_e( 'Label', 'perrylabs-cookie-notice' ); ?></label></th>
+                    <td><input type="text" id="cat_label" name="cat_label" class="regular-text" placeholder="Personalization" /></td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="cat_description"><?php esc_html_e( 'Description', 'perrylabs-cookie-notice' ); ?></label></th>
+                    <td><input type="text" id="cat_description" name="cat_description" class="large-text" placeholder="Remembers display preferences and personalized content choices." /></td>
+                </tr>
+            </table>
+            <?php submit_button( __( 'Add category', 'perrylabs-cookie-notice' ) ); ?>
         </form>
         <?php
     }
@@ -905,6 +1127,127 @@ class PLCN_Settings {
     }
 
     /* ============================================================== */
+    /*  Scanner tab                                                    */
+    /* ============================================================== */
+
+    private function render_scanner_tab( array $options ): void {
+        if ( ! empty( $_GET['scanned'] ) ) {
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Scan complete.', 'perrylabs-cookie-notice' ) . '</p></div>';
+        }
+        $last = PLCN_Scanner::instance()->get_last();
+        $default_urls = $last && ! empty( $last['urls'] )
+            ? implode( "\n", wp_list_pluck( $last['urls'], 'url' ) )
+            : home_url( '/' );
+        ?>
+        <p><?php esc_html_e( 'Crawl one or more URLs and surface the cookies / trackers that get set. The scanner runs server-side via the WP HTTP API — it cannot execute JavaScript, so JS-set cookies are detected by recognizing known tracker signatures in the page HTML rather than by direct observation.', 'perrylabs-cookie-notice' ); ?></p>
+
+        <form method="post">
+            <?php wp_nonce_field( 'plcn_run_scan' ); ?>
+            <input type="hidden" name="plcn_run_scan" value="1" />
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="plcn_scan_urls"><?php esc_html_e( 'URLs to scan', 'perrylabs-cookie-notice' ); ?></label></th>
+                    <td>
+                        <textarea id="plcn_scan_urls" name="plcn_scan_urls" rows="5" class="large-text code" placeholder="<?php echo esc_attr( home_url( '/' ) ); ?>"><?php echo esc_textarea( $default_urls ); ?></textarea>
+                        <p class="description"><?php esc_html_e( 'One URL per line. The home page is scanned by default. Add representative pages: blog post, shop product, contact form, etc.', 'perrylabs-cookie-notice' ); ?></p>
+                    </td>
+                </tr>
+            </table>
+            <?php submit_button( __( 'Run scan', 'perrylabs-cookie-notice' ), 'primary', 'submit', false ); ?>
+        </form>
+
+        <?php if ( empty( $last ) ) : ?>
+            <p class="description" style="margin-top:16px;"><?php esc_html_e( 'No scan results yet.', 'perrylabs-cookie-notice' ); ?></p>
+            <?php return;
+        endif; ?>
+
+        <h3 style="margin-top:32px;"><?php
+            printf( esc_html__( 'Last scan: %s UTC', 'perrylabs-cookie-notice' ), esc_html( $last['finished_at'] ?? '' ) );
+        ?></h3>
+
+        <h4><?php esc_html_e( 'Pages checked', 'perrylabs-cookie-notice' ); ?></h4>
+        <table class="widefat striped" style="max-width:780px;">
+            <thead><tr><th><?php esc_html_e( 'URL', 'perrylabs-cookie-notice' ); ?></th><th><?php esc_html_e( 'Status', 'perrylabs-cookie-notice' ); ?></th><th><?php esc_html_e( 'Size', 'perrylabs-cookie-notice' ); ?></th></tr></thead>
+            <tbody>
+                <?php foreach ( ( $last['urls'] ?? array() ) as $u ) : ?>
+                    <tr>
+                        <td><code style="font-size:11px;"><?php echo esc_html( $u['url'] ); ?></code></td>
+                        <td><?php echo esc_html( $u['status'] ); ?></td>
+                        <td><?php echo esc_html( size_format( $u['size'] ) ); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <h4 style="margin-top:20px;"><?php esc_html_e( 'Cookies observed via Set-Cookie headers', 'perrylabs-cookie-notice' ); ?></h4>
+        <?php if ( empty( $last['cookies'] ) ) : ?>
+            <p class="description"><?php esc_html_e( 'No cookies were set on the scanned pages.', 'perrylabs-cookie-notice' ); ?></p>
+        <?php else : ?>
+            <table class="widefat striped">
+                <thead>
+                    <tr>
+                        <th><?php esc_html_e( 'Cookie', 'perrylabs-cookie-notice' ); ?></th>
+                        <th><?php esc_html_e( 'Service', 'perrylabs-cookie-notice' ); ?></th>
+                        <th><?php esc_html_e( 'Category', 'perrylabs-cookie-notice' ); ?></th>
+                        <th><?php esc_html_e( 'Duration', 'perrylabs-cookie-notice' ); ?></th>
+                        <th><?php esc_html_e( 'Seen #', 'perrylabs-cookie-notice' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( $last['cookies'] as $c ) : ?>
+                        <tr>
+                            <td><code><?php echo esc_html( $c['name'] ); ?></code></td>
+                            <td><?php echo $c['service'] ? esc_html( $c['service'] ) : '<em>' . esc_html__( 'unknown', 'perrylabs-cookie-notice' ) . '</em>'; ?></td>
+                            <td><?php echo esc_html( ucfirst( $c['category'] ) ); ?></td>
+                            <td><?php echo esc_html( $c['duration'] ); ?></td>
+                            <td><?php echo (int) $c['count']; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+
+        <h4 style="margin-top:20px;"><?php esc_html_e( 'Tracker signatures detected in HTML', 'perrylabs-cookie-notice' ); ?></h4>
+        <?php if ( empty( $last['signatures'] ) ) : ?>
+            <p class="description"><?php esc_html_e( 'No known tracker signatures found in the page HTML.', 'perrylabs-cookie-notice' ); ?></p>
+        <?php else : ?>
+            <table class="widefat striped" style="max-width:780px;">
+                <thead><tr><th><?php esc_html_e( 'Service', 'perrylabs-cookie-notice' ); ?></th><th><?php esc_html_e( 'Where', 'perrylabs-cookie-notice' ); ?></th><th><?php esc_html_e( 'Action', 'perrylabs-cookie-notice' ); ?></th></tr></thead>
+                <tbody>
+                    <?php foreach ( $last['signatures'] as $service => $found_urls ) :
+                        $preset = PLCN_Script_Registry::PRESETS[ $service ] ?? null;
+                        $cat    = $preset['category'] ?? 'other';
+                        $add_url = admin_url( 'options-general.php?page=' . self::PAGE_SLUG . '&tab=scripts&preset=' . $service );
+                        ?>
+                        <tr>
+                            <td><?php echo esc_html( $preset['label'] ?? $service ); ?></td>
+                            <td style="font-size:11px;"><code><?php echo esc_html( implode( ', ', array_slice( $found_urls, 0, 2 ) ) ); ?></code></td>
+                            <td>
+                                <?php if ( $preset ) : ?>
+                                    <a href="<?php echo esc_url( $add_url ); ?>" class="button button-small button-secondary"><?php esc_html_e( 'Add to registry', 'perrylabs-cookie-notice' ); ?></a>
+                                <?php else : ?>
+                                    <em><?php echo esc_html( ucfirst( $cat ) ); ?></em>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+
+        <?php if ( ! empty( $last['errors'] ) ) : ?>
+            <h4 style="margin-top:20px;"><?php esc_html_e( 'Errors', 'perrylabs-cookie-notice' ); ?></h4>
+            <ul style="list-style:disc;margin-left:20px;">
+                <?php foreach ( $last['errors'] as $e ) : ?>
+                    <li><code><?php echo esc_html( $e['url'] ); ?></code> — <?php echo esc_html( $e['error'] ); ?></li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+
+        <?php
+    }
+
+    /* ============================================================== */
     /*  Consent Log tab                                                */
     /* ============================================================== */
 
@@ -1036,6 +1379,27 @@ class PLCN_Settings {
             });
         })();
         </script>
+
+        <h3 style="margin-top:32px;"><?php esc_html_e( 'Generate Cookie Policy page', 'perrylabs-cookie-notice' ); ?></h3>
+        <?php if ( ! empty( $_GET['page_generated'] ) ) :
+            $gen_id = (int) $_GET['page_generated'];
+            $edit_link = get_edit_post_link( $gen_id ); ?>
+            <div class="notice notice-success inline"><p>
+                <?php printf(
+                    esc_html__( 'Page generated. Review and publish: %s', 'perrylabs-cookie-notice' ),
+                    '<a href="' . esc_url( $edit_link ?: '#' ) . '">' . esc_html__( 'Edit page', 'perrylabs-cookie-notice' ) . '</a>'
+                ); ?>
+            </p></div>
+        <?php endif; ?>
+        <?php if ( ! empty( $_GET['page_error'] ) ) : ?>
+            <div class="notice notice-error inline"><p><?php esc_html_e( 'Could not generate the page.', 'perrylabs-cookie-notice' ); ?></p></div>
+        <?php endif; ?>
+        <p class="description"><?php esc_html_e( 'Creates a draft "Cookie Policy" page populated with the shortcode list of registered cookies plus standard disclosures. If one was generated before, re-running updates its content without creating duplicates.', 'perrylabs-cookie-notice' ); ?></p>
+        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+            <?php wp_nonce_field( 'plcn_generate_privacy_page' ); ?>
+            <input type="hidden" name="action" value="plcn_generate_privacy_page" />
+            <p><button type="submit" class="button button-secondary"><?php esc_html_e( 'Generate / refresh page', 'perrylabs-cookie-notice' ); ?></button></p>
+        </form>
 
         <h3 style="margin-top:32px;"><?php esc_html_e( 'Export settings', 'perrylabs-cookie-notice' ); ?></h3>
         <p class="description"><?php esc_html_e( 'Download all settings as a JSON file. Useful for cloning across staging/production.', 'perrylabs-cookie-notice' ); ?></p>

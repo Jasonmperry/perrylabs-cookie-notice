@@ -14,6 +14,11 @@ class PLCN_Script_Registry {
     private static ?PLCN_Script_Registry $instance = null;
     private array $scripts = array();
 
+    /**
+     * Preset definitions. Each preset's `cookies` are pulled from
+     * PLCN_Cookie_DB::for_service() at access time so the DB stays
+     * authoritative — see preset() / presets().
+     */
     const PRESETS = array(
         'google-analytics-4' => array(
             'label'    => 'Google Analytics 4',
@@ -60,7 +65,38 @@ class PLCN_Script_Registry {
             'id_label' => 'Portal ID',
             'load_in'  => 'head',
         ),
+        'stripe' => array(
+            'label'    => 'Stripe.js',
+            'category' => 'required',
+            'src'      => 'https://js.stripe.com/v3/',
+            'inline'   => '',
+            'attrs'    => array( 'async' ),
+            'id_label' => 'Publishable Key (pk_live_…)',
+            'load_in'  => 'head',
+        ),
     );
+
+    /**
+     * Resolve a preset by key, merging the known-cookie list from PLCN_Cookie_DB.
+     */
+    public static function preset( string $key ): ?array {
+        if ( ! isset( self::PRESETS[ $key ] ) ) return null;
+        $preset = self::PRESETS[ $key ];
+        $preset['cookies'] = PLCN_Cookie_DB::for_service( $key );
+        return $preset;
+    }
+
+    /**
+     * All presets, with cookies merged in. Use this instead of accessing PRESETS
+     * directly when you need the cookie list.
+     */
+    public static function presets(): array {
+        $out = array();
+        foreach ( array_keys( self::PRESETS ) as $key ) {
+            $out[ $key ] = self::preset( $key );
+        }
+        return $out;
+    }
 
     public static function instance(): self {
         if ( null === self::$instance ) {
@@ -89,14 +125,16 @@ class PLCN_Script_Registry {
 
     public function register( string $handle, array $config ): void {
         $this->scripts[ $handle ] = wp_parse_args( $config, array(
-            'handle'   => $handle,
-            'label'    => $handle,
-            'category' => PLCN_Consent::CATEGORY_OTHER,
-            'src'      => '',
-            'inline'   => '',
-            'attrs'    => array(),
-            'load_in'  => 'head',
-            'priority' => 10,
+            'handle'     => $handle,
+            'label'      => $handle,
+            'category'   => PLCN_Consent::CATEGORY_OTHER,
+            'service_id' => '',
+            'src'        => '',
+            'inline'     => '',
+            'attrs'      => array(),
+            'load_in'    => 'head',
+            'priority'   => 10,
+            'cookies'    => array(),
         ) );
     }
 

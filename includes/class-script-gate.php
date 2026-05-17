@@ -167,12 +167,8 @@ class PLCN_Script_Gate {
     }
 
     private function normalize_category( string $category ): string {
-        $valid = array(
-            PLCN_Consent::CATEGORY_REQUIRED,
-            PLCN_Consent::CATEGORY_ANALYTICS,
-            PLCN_Consent::CATEGORY_MARKETING,
-            PLCN_Consent::CATEGORY_OTHER,
-        );
-        return in_array( $category, $valid, true ) ? $category : PLCN_Consent::CATEGORY_OTHER;
+        return PLCN_Consent::instance()->is_valid_category( $category )
+            ? $category
+            : PLCN_Consent::CATEGORY_OTHER;
     }
 }

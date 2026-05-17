@@ -234,12 +234,10 @@ gtag('consent','default',{
 
         $banner_title = PLCN_Strings::get( 'banner_title' );
 
-        $cat_meta = array(
-            'required'  => array( 'name' => PLCN_Strings::get( 'cat_required_name' ),  'desc' => PLCN_Strings::get( 'cat_required_desc' ) ),
-            'analytics' => array( 'name' => PLCN_Strings::get( 'cat_analytics_name' ), 'desc' => PLCN_Strings::get( 'cat_analytics_desc' ) ),
-            'marketing' => array( 'name' => PLCN_Strings::get( 'cat_marketing_name' ), 'desc' => PLCN_Strings::get( 'cat_marketing_desc' ) ),
-            'other'     => array( 'name' => PLCN_Strings::get( 'cat_other_name' ),     'desc' => PLCN_Strings::get( 'cat_other_desc' ) ),
-        );
+        $cat_meta = array();
+        foreach ( PLCN_Consent::instance()->get_categories() as $cat_key ) {
+            $cat_meta[ $cat_key ] = PLCN_Consent::instance()->get_category_meta( $cat_key );
+        }
 
         $btn_style     = 'background:' . esc_attr( $button_color ) . ';color:' . esc_attr( $bg_color ) . ';';
         $btn_alt_style = 'background:transparent;color:#fff;border:1px solid ' . esc_attr( $button_color ) . ';';

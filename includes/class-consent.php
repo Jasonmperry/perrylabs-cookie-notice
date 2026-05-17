@@ -1,6 +1,7 @@
 <?php
 /**
- * PLCN_Consent — Consent state, cookie parsing, and policy versioning.
+ * PLCN_Consent — Consent state, cookie parsing, policy versioning, and the
+ * canonical category list (built-in + admin-defined custom).
  *
  * @package PerryLabs\CookieNotice
  */
@@ -20,6 +21,13 @@ class PLCN_Consent {
     const CATEGORY_MARKETING = 'marketing';
     const CATEGORY_OTHER     = 'other';
 
+    const BUILTIN_CATEGORIES = array(
+        self::CATEGORY_REQUIRED,
+        self::CATEGORY_ANALYTICS,
+        self::CATEGORY_MARKETING,
+        self::CATEGORY_OTHER,
+    );
+
     public static function instance(): self {
         if ( null === self::$instance ) {
             self::$instance = new self();
@@ -27,12 +35,53 @@ class PLCN_Consent {
         return self::$instance;
     }
 
+    /**
+     * Full category list: built-ins + admin-defined custom categories.
+     * "Required" always comes first; built-ins precede custom; custom render
+     * in the order they were defined.
+     */
     public function get_categories(): array {
+        $options = get_option( 'plcn_options', array() );
+        $custom  = array_keys( $options['custom_categories'] ?? array() );
+
+        // Filter out anything colliding with a built-in (admin can't override built-ins by key).
+        $custom = array_values( array_filter( $custom, function ( $k ) {
+            return ! in_array( $k, self::BUILTIN_CATEGORIES, true );
+        } ) );
+
+        return array_values( array_merge( self::BUILTIN_CATEGORIES, $custom ) );
+    }
+
+    public function is_valid_category( string $key ): bool {
+        return in_array( $key, $this->get_categories(), true );
+    }
+
+    public function is_builtin( string $key ): bool {
+        return in_array( $key, self::BUILTIN_CATEGORIES, true );
+    }
+
+    /**
+     * Per-category display metadata. For built-ins, pulls from PLCN_Strings
+     * (so admin Messages tab overrides take effect). For custom, pulls from
+     * the `custom_categories` option directly.
+     *
+     * @return array{name:string, desc:string}
+     */
+    public function get_category_meta( string $key ): array {
+        if ( $this->is_builtin( $key ) ) {
+            $name_key = 'cat_' . $key . '_name';
+            $desc_key = 'cat_' . $key . '_desc';
+            return array(
+                'name' => PLCN_Strings::get( $name_key, ucfirst( $key ) ),
+                'desc' => PLCN_Strings::get( $desc_key ),
+            );
+        }
+
+        $options = get_option( 'plcn_options', array() );
+        $cat     = $options['custom_categories'][ $key ] ?? array();
         return array(
-            self::CATEGORY_REQUIRED,
-            self::CATEGORY_ANALYTICS,
-            self::CATEGORY_MARKETING,
-            self::CATEGORY_OTHER,
+            'name' => $cat['label']       ?? ucwords( str_replace( array( '-', '_' ), ' ', $key ) ),
+            'desc' => $cat['description'] ?? '',
         );
     }
 

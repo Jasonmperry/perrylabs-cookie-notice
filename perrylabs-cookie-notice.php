@@ -3,7 +3,7 @@
  * Plugin Name: PerryLabs Cookie Notice
  * Plugin URI: https://perrylabs.io
  * Description: Granular cookie consent with category-based opt-in, Google Consent Mode v2, script gating, geo-targeting, and a server-side audit log. No external dependencies.
- * Version: 3.2.0
+ * Version: 3.3.0
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Author: PerryLabs
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PL_COOKIE_VERSION', '3.2.0' );
+define( 'PL_COOKIE_VERSION', '3.3.0' );
 define( 'PL_COOKIE_CODENAME', 'Cookie Monster' );
 define( 'PL_COOKIE_PLUGIN_FILE', __FILE__ );
 define( 'PL_COOKIE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -25,9 +25,11 @@ define( 'PL_COOKIE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once PL_COOKIE_PLUGIN_DIR . 'includes/branding/class-perrylabs-branding.php';
 require_once PL_COOKIE_PLUGIN_DIR . 'includes/class-strings.php';
+require_once PL_COOKIE_PLUGIN_DIR . 'includes/class-cookie-db.php';
 require_once PL_COOKIE_PLUGIN_DIR . 'includes/class-consent.php';
 require_once PL_COOKIE_PLUGIN_DIR . 'includes/class-script-registry.php';
 require_once PL_COOKIE_PLUGIN_DIR . 'includes/class-script-gate.php';
+require_once PL_COOKIE_PLUGIN_DIR . 'includes/class-scanner.php';
 require_once PL_COOKIE_PLUGIN_DIR . 'includes/class-embed-blocker.php';
 require_once PL_COOKIE_PLUGIN_DIR . 'includes/class-consent-log.php';
 require_once PL_COOKIE_PLUGIN_DIR . 'includes/class-geo.php';
@@ -36,6 +38,14 @@ require_once PL_COOKIE_PLUGIN_DIR . 'includes/class-shortcodes.php';
 require_once PL_COOKIE_PLUGIN_DIR . 'includes/class-rest.php';
 require_once PL_COOKIE_PLUGIN_DIR . 'includes/class-cli.php';
 require_once PL_COOKIE_PLUGIN_DIR . 'includes/class-settings.php';
+
+add_action( 'init', function () {
+    load_plugin_textdomain(
+        'perrylabs-cookie-notice',
+        false,
+        dirname( plugin_basename( __FILE__ ) ) . '/languages'
+    );
+} );
 
 add_action( 'plugins_loaded', function () {
     PLCN_Consent::instance();

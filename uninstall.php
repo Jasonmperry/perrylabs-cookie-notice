@@ -8,6 +8,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 delete_option( 'plcn_options' );
+delete_option( 'plcn_db_version' );
 
 // Legacy individual options.
 $legacy_keys = array(

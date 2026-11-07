@@ -84,6 +84,8 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 == Changelog ==
 
 = 3.4.2 =
+* Fix: logged consent events from the banner recorded "required" as off; it is now always on, matching the REST endpoint.
+* Fix: the audit-log table is now created after code-deploy upgrades too, not only on activation (sites updated by git/Pantheon deploy could be missing it).
 * Fix: the consent audit log no longer drops events on full-page-cached sites (stale nonce for logged-out visitors).
 * Fix: the consent-recording endpoint now respects the Audit Log setting server-side.
 * Hardening: action and region values are whitelisted/normalised, and CSV exports neutralise spreadsheet formulas.

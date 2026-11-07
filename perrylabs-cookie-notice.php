@@ -46,6 +46,13 @@ add_action( 'init', function () {
 } );
 
 add_action( 'plugins_loaded', function () {
+    // Activation hooks don't run when a plugin is updated by deploying code
+    // (Pantheon, git), so make sure the audit-log table exists after upgrades.
+    if ( get_option( 'plcn_db_version' ) !== PL_COOKIE_VERSION ) {
+        PLCN_Consent_Log::install_table();
+        update_option( 'plcn_db_version', PL_COOKIE_VERSION, false );
+    }
+
     PLCN_Consent::instance();
     PLCN_Script_Registry::instance();
     PLCN_Script_Gate::instance();

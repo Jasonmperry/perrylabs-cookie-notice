@@ -90,6 +90,8 @@ class PLCN_Consent_Log {
         foreach ( PLCN_Consent::instance()->get_categories() as $cat ) {
             $clean[ $cat ] = ! empty( $categories[ $cat ] );
         }
+        // Strictly necessary cookies are always on; the browser doesn't send it.
+        $clean['required'] = true;
 
         $action = isset( $_POST['plcn_action'] ) ? sanitize_key( wp_unslash( $_POST['plcn_action'] ) ) : '';
         if ( ! in_array( $action, array( 'accept-all', 'reject-all', 'save-preferences' ), true ) ) {

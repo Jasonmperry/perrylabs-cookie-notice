@@ -2,7 +2,7 @@
 Tags: cookies, consent, gdpr, ccpa, privacy, google consent mode, cookie banner
 Requires at least: 5.8
 Requires PHP: 7.4
-Stable tag: 3.5.0
+Stable tag: 3.5.1
 Tested up to: 7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -82,6 +82,12 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 6. Consent Log — audit trail of consent decisions.
 
 == Changelog ==
+
+= 3.5.1 =
+* Fix: the banner stayed hidden after "Manage preferences" then Cancel, leaving visitors with no way to choose. It now comes back until they decide.
+* Fix: "Manage preferences" no longer fires twice, so focus returns to the button when the modal closes.
+* Fix: saving the General tab no longer wipes custom Messages, custom categories, Embeds, URL exclusions or custom CSS.
+* New: "Banner Text" color setting (default white), so a site can match its brand without editing the plugin.
 
 = 3.5.0 =
 * Fix: banner bar colors now follow the configured palette instead of the theme defaults.

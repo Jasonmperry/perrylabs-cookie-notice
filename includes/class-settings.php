@@ -39,6 +39,7 @@ class PLCN_Settings {
             'expiry_days'            => 365,
             'bg_color'               => '#111',
             'button_color'           => '#ffb25d',
+            'text_color'             => '#fff',
             'position'               => 'bottom',
             'theme'                  => 'light',
             'compliance_mode'        => 'none',
@@ -118,6 +119,7 @@ class PLCN_Settings {
         $sanitized['expiry_days']            = absint( $input['expiry_days'] ?? $defaults['expiry_days'] );
         $sanitized['bg_color']               = sanitize_hex_color( $input['bg_color'] ?? '' ) ?: $defaults['bg_color'];
         $sanitized['button_color']           = sanitize_hex_color( $input['button_color'] ?? '' ) ?: $defaults['button_color'];
+        $sanitized['text_color']             = sanitize_hex_color( $input['text_color'] ?? '' ) ?: ( $existing['text_color'] ?? $defaults['text_color'] );
         $sanitized['position']               = in_array( $input['position'] ?? '', array( 'bottom', 'top', 'overlay' ), true ) ? $input['position'] : 'bottom';
         $sanitized['theme']                  = in_array( $input['theme'] ?? '', array( 'light', 'dark', 'auto' ), true ) ? $input['theme'] : 'light';
         $sanitized['compliance_mode']        = in_array( $input['compliance_mode'] ?? '', array( 'none', 'gdpr', 'ccpa', 'both' ), true ) ? $input['compliance_mode'] : 'none';
@@ -128,11 +130,14 @@ class PLCN_Settings {
         $sanitized['show_branding']          = ! empty( $input['show_branding'] ) ? 1 : 0;
         $sanitized['honor_dnt']              = ! empty( $input['honor_dnt'] ) ? 1 : 0;
         $sanitized['privacy_policy_url']     = esc_url_raw( $input['privacy_policy_url'] ?? '' );
-        $sanitized['skip_urls']              = sanitize_textarea_field( $input['skip_urls'] ?? '' );
-        $sanitized['custom_css']             = wp_strip_all_tags( $input['custom_css'] ?? '' );
+        // Each settings tab only posts its own fields. Keep the stored value
+        // for fields another tab owns, so saving General no longer wipes the
+        // Advanced, Messages, Categories or Embeds settings.
+        $sanitized['skip_urls']              = sanitize_textarea_field( array_key_exists( 'skip_urls', $input ) ? $input['skip_urls'] : ( $existing['skip_urls'] ?? '' ) );
+        $sanitized['custom_css']             = wp_strip_all_tags( array_key_exists( 'custom_css', $input ) ? $input['custom_css'] : ( $existing['custom_css'] ?? '' ) );
 
         // Strings — admin overrides for any string key.
-        $string_input = (array) ( $input['strings'] ?? array() );
+        $string_input = (array) ( array_key_exists( 'strings', $input ) ? $input['strings'] : ( $existing['strings'] ?? array() ) );
         $clean_strings = array();
         foreach ( PLCN_Strings::defaults() as $key => $default ) {
             if ( isset( $string_input[ $key ] ) ) {
@@ -142,7 +147,7 @@ class PLCN_Settings {
         $sanitized['strings'] = $clean_strings;
 
         // Custom categories — array of array( 'label' => ..., 'description' => ... ) keyed by slug.
-        $custom_input = (array) ( $input['custom_categories'] ?? array() );
+        $custom_input = (array) ( array_key_exists( 'custom_categories', $input ) ? $input['custom_categories'] : ( $existing['custom_categories'] ?? array() ) );
         $clean_custom = array();
         foreach ( $custom_input as $slug => $row ) {
             $slug = sanitize_key( $slug );
@@ -159,7 +164,7 @@ class PLCN_Settings {
         $allowed_providers = array_keys( PLCN_Embed_Blocker::PROVIDERS );
         $sanitized['embed_blocker'] = array_values( array_intersect(
             $allowed_providers,
-            array_map( 'sanitize_key', (array) ( $input['embed_blocker'] ?? array() ) )
+            array_map( 'sanitize_key', (array) ( array_key_exists( 'embed_blocker', $input ) ? $input['embed_blocker'] : ( $existing['embed_blocker'] ?? array() ) ) )
         ) );
 
         $sanitized['policy_version'] = (int) ( $existing['policy_version'] ?? 1 );
@@ -622,6 +627,10 @@ class PLCN_Settings {
                     <td><input type="text" id="plcn_button_color" class="plcn-color-field" name="plcn_options[button_color]" value="<?php echo esc_attr( $options['button_color'] ?? '#ffb25d' ); ?>" data-default-color="#ffb25d" /></td>
                 </tr>
                 <tr>
+                    <th scope="row"><label for="plcn_text_color"><?php esc_html_e( 'Banner Text', 'perrylabs-cookie-notice' ); ?></label></th>
+                    <td><input type="text" id="plcn_text_color" class="plcn-color-field" name="plcn_options[text_color]" value="<?php echo esc_attr( $options['text_color'] ?? '#fff' ); ?>" data-default-color="#ffffff" /></td>
+                </tr>
+                <tr>
                     <th scope="row"><label for="plcn_privacy_policy_url"><?php esc_html_e( 'Privacy Policy URL', 'perrylabs-cookie-notice' ); ?></label></th>
                     <td>
                         <input type="url" id="plcn_privacy_policy_url" name="plcn_options[privacy_policy_url]" value="<?php echo esc_attr( $options['privacy_policy_url'] ?? '' ); ?>" class="large-text" placeholder="https://example.com/privacy" />
@@ -702,13 +711,14 @@ class PLCN_Settings {
     private function render_live_preview( array $options ): void {
         $bg     = $options['bg_color']     ?? '#111';
         $accent = $options['button_color'] ?? '#ffb25d';
+        $fg     = $options['text_color']   ?? '#fff';
         $msg    = PLCN_Strings::get( 'banner_message' );
         $title  = PLCN_Strings::get( 'banner_title' );
         ?>
         <h2 style="margin-top:32px;"><?php esc_html_e( 'Live preview', 'perrylabs-cookie-notice' ); ?></h2>
         <p class="description"><?php esc_html_e( 'Approximates the front-end banner with your current colors and messages. Save the form to refresh.', 'perrylabs-cookie-notice' ); ?></p>
         <div id="plcn-admin-preview" style="margin-top:8px;padding:16px;background:#f0f0f1;border:1px solid #c3c4c7;border-radius:6px;">
-            <div class="plcn-banner-inner" id="plcn-preview-bar" style="background:<?php echo esc_attr( $bg ); ?>;color:#fff;padding:14px 18px;border-radius:6px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:space-between;">
+            <div class="plcn-banner-inner" id="plcn-preview-bar" style="background:<?php echo esc_attr( $bg ); ?>;color:<?php echo esc_attr( $fg ); ?>;padding:14px 18px;border-radius:6px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:space-between;">
                 <div style="flex:1;min-width:260px;">
                     <?php if ( $title ) : ?>
                         <p style="margin:0 0 4px;font-weight:600;font-size:14px;" id="plcn-preview-title"><?php echo esc_html( $title ); ?></p>
@@ -719,10 +729,10 @@ class PLCN_Settings {
                     <button type="button" id="plcn-preview-accept" style="background:<?php echo esc_attr( $accent ); ?>;color:<?php echo esc_attr( $bg ); ?>;border:0;padding:9px 16px;border-radius:6px;font-weight:600;font-size:13px;cursor:default;">
                         <?php echo esc_html( PLCN_Strings::get( 'btn_accept_all' ) ); ?>
                     </button>
-                    <button type="button" id="plcn-preview-reject" style="background:transparent;color:#fff;border:1px solid <?php echo esc_attr( $accent ); ?>;padding:9px 16px;border-radius:6px;font-weight:600;font-size:13px;cursor:default;">
+                    <button type="button" id="plcn-preview-reject" style="background:transparent;color:<?php echo esc_attr( $fg ); ?>;border:1px solid <?php echo esc_attr( $accent ); ?>;padding:9px 16px;border-radius:6px;font-weight:600;font-size:13px;cursor:default;">
                         <?php echo esc_html( PLCN_Strings::get( 'btn_reject_all' ) ); ?>
                     </button>
-                    <button type="button" style="background:transparent;color:rgba(255,255,255,0.78);border:0;padding:9px 6px;font-size:13px;text-decoration:underline;cursor:default;">
+                    <button type="button" id="plcn-preview-link" style="background:transparent;color:<?php echo esc_attr( $fg ); ?>;opacity:0.78;border:0;padding:9px 6px;font-size:13px;text-decoration:underline;cursor:default;">
                         <?php echo esc_html( PLCN_Strings::get( 'btn_customize' ) ); ?>
                     </button>
                 </div>
@@ -732,14 +742,18 @@ class PLCN_Settings {
         window.plcnUpdatePreview = function () {
             var bgEl = document.getElementById('plcn_bg_color');
             var acEl = document.getElementById('plcn_button_color');
+            var fgEl = document.getElementById('plcn_text_color');
+            var fg = fgEl ? fgEl.value : '<?php echo esc_js( $fg ); ?>';
             var bg = bgEl ? bgEl.value : '<?php echo esc_js( $bg ); ?>';
             var ac = acEl ? acEl.value : '<?php echo esc_js( $accent ); ?>';
             var bar = document.getElementById('plcn-preview-bar');
             var acc = document.getElementById('plcn-preview-accept');
             var rej = document.getElementById('plcn-preview-reject');
-            if (bar) bar.style.background = bg;
+            var lnk = document.getElementById('plcn-preview-link');
+            if (bar) { bar.style.background = bg; bar.style.color = fg; }
             if (acc) { acc.style.background = ac; acc.style.color = bg; }
-            if (rej) rej.style.borderColor = ac;
+            if (rej) { rej.style.borderColor = ac; rej.style.color = fg; }
+            if (lnk) lnk.style.color = fg;
         };
         </script>
         <?php
@@ -1192,6 +1206,8 @@ class PLCN_Settings {
                 if ( is_array( $v ) ) continue;
                 printf( '<input type="hidden" name="plcn_options[%s]" value="%s" />', esc_attr( $k ), esc_attr( (string) $v ) );
             }
+            // Always send the key, so unticking every provider clears the list.
+            echo '<input type="hidden" name="plcn_options[embed_blocker][]" value="" />';
             ?>
             <table class="widefat striped" style="max-width:640px;">
                 <thead>

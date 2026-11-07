@@ -289,7 +289,12 @@
     function showBanner() {
         var banner = $('plcn-banner');
         var backdrop = $('plcn-overlay-backdrop');
-        if (banner) banner.classList.add('plcn-active');
+        if (banner) {
+            // hideBanner() sets display:none; clear it or the banner never
+            // comes back after "Manage preferences" -> Cancel.
+            banner.style.display = '';
+            banner.classList.add('plcn-active');
+        }
         if (backdrop && banner && banner.classList.contains('plcn-pos-overlay')) {
             backdrop.classList.add('plcn-active');
         }
@@ -479,18 +484,25 @@
         if (banner) {
             // Delegated handler (primary).
             banner.addEventListener('click', function (e) {
+                if (e._plcnHandled) return;
                 var btn = e.target.closest
                     ? e.target.closest('[data-action]')
                     : findActionAncestor(e.target);
                 if (!btn) return;
+                e._plcnHandled = true;
                 handleBannerAction(btn.getAttribute('data-action'), mode, region);
             });
 
-            // Direct handlers on each action button (fallback).
+            // Direct handlers on each action button (fallback). They run
+            // first and mark the event so the delegated handler skips it;
+            // otherwise "Manage preferences" opened twice and focus could
+            // not return to the button on close.
             var actionBtns = banner.querySelectorAll('[data-action]');
             for (var i = 0; i < actionBtns.length; i++) {
                 (function (btn) {
                     btn.addEventListener('click', function (e) {
+                        if (e._plcnHandled) return;
+                        e._plcnHandled = true;
                         handleBannerAction(btn.getAttribute('data-action'), mode, region);
                     });
                 })(actionBtns[i]);

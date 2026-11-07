@@ -2,8 +2,8 @@
 Tags: cookies, consent, gdpr, ccpa, privacy, google consent mode, cookie banner
 Requires at least: 5.8
 Requires PHP: 7.4
-Stable tag: 3.4.1
-Tested up to: 6.8
+Stable tag: 3.4.2
+Tested up to: 7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,6 +82,12 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 6. Consent Log — audit trail of consent decisions.
 
 == Changelog ==
+
+= 3.4.2 =
+* Fix: the consent audit log no longer drops events on full-page-cached sites (stale nonce for logged-out visitors).
+* Fix: the consent-recording endpoint now respects the Audit Log setting server-side.
+* Hardening: action and region values are whitelisted/normalised, and CSV exports neutralise spreadsheet formulas.
+* Tested up to WordPress 7.1.
 
 = 3.4.1 =
 * **Neutralized fresh-install metadata** so the plugin ships with no vendor-branded text by default. Plugin Name, Description, Author, and readme intro are neutral. The opt-in `show_branding` setting still surfaces a branded header/footer for site owners who want it.

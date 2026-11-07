@@ -63,7 +63,21 @@ class PLCN_Consent_Log {
      * AJAX endpoint — records a consent event from the client.
      */
     public function ajax_record(): void {
-        check_ajax_referer( 'plcn_consent_log', 'nonce' );
+        // Respect the admin toggle server-side too, not only in the JS.
+        $options = get_option( 'plcn_options', array() );
+        if ( empty( $options['log_consent'] ) ) {
+            wp_send_json_error( null, 403 );
+        }
+
+        // Only verify the nonce for signed-in users. Anonymous visitors are
+        // usually served full-page-cached HTML (Pantheon, Cloudflare), so the
+        // embedded nonce goes stale within a day and every consent event after
+        // that was rejected, leaving gaps in the audit log. A logged-out nonce
+        // adds no protection here: the same event can already be posted to the
+        // public REST endpoint (/plcn/v1/consent).
+        if ( is_user_logged_in() ) {
+            check_ajax_referer( 'plcn_consent_log', 'nonce' );
+        }
 
         $categories_raw = isset( $_POST['categories'] ) ? wp_unslash( $_POST['categories'] ) : '{}';
         $categories     = json_decode( $categories_raw, true );
@@ -76,9 +90,15 @@ class PLCN_Consent_Log {
         foreach ( PLCN_Consent::instance()->get_categories() as $cat ) {
             $clean[ $cat ] = ! empty( $categories[ $cat ] );
         }
+        // Strictly necessary cookies are always on; the browser doesn't send it.
+        $clean['required'] = true;
 
-        $action = isset( $_POST['plcn_action'] ) ? sanitize_text_field( wp_unslash( $_POST['plcn_action'] ) ) : '';
-        $region = isset( $_POST['region'] ) ? sanitize_text_field( wp_unslash( $_POST['region'] ) ) : '';
+        $action = isset( $_POST['plcn_action'] ) ? sanitize_key( wp_unslash( $_POST['plcn_action'] ) ) : '';
+        if ( ! in_array( $action, array( 'accept-all', 'reject-all', 'save-preferences' ), true ) ) {
+            $action = 'other';
+        }
+        $region = isset( $_POST['region'] ) ? sanitize_key( wp_unslash( $_POST['region'] ) ) : '';
+        $region = substr( $region, 0, 32 );
 
         $this->record( $clean, $action, $region );
 
@@ -150,10 +170,23 @@ class PLCN_Consent_Log {
         $out = fopen( 'php://output', 'w' );
         fputcsv( $out, array( 'id', 'recorded_at', 'policy_version', 'categories', 'geo_region', 'ip_hash', 'ua_hash', 'action' ) );
         foreach ( $rows as $row ) {
-            fputcsv( $out, $row );
+            fputcsv( $out, array_map( array( __CLASS__, 'csv_safe' ), $row ) );
         }
         fclose( $out );
         exit;
+    }
+
+    /**
+     * Neutralise spreadsheet formulas (CSV injection) in exported cells.
+     *
+     * @param mixed $value Cell value.
+     */
+    public static function csv_safe( $value ): string {
+        $value = (string) $value;
+        if ( '' !== $value && in_array( $value[0], array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
+            return "'" . $value;
+        }
+        return $value;
     }
 
     private function get_client_ip(): string {

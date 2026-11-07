@@ -70,7 +70,7 @@
     left: 0;
     right: 0;
     z-index: 99999;
-    color: #fff;
+    color: var(--plcn-fg, #fff);
     transition: transform 0.35s ease, opacity 0.35s ease;
 }
 #plcn-banner.plcn-active {
@@ -166,7 +166,7 @@
 .plcn-btn-link {
     background: none;
     border: 0;
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--plcn-fg-muted, rgba(255, 255, 255, 0.78));
     padding: 10px 8px;
     text-decoration: underline;
     font-size: 13px;
@@ -174,11 +174,11 @@
     font-weight: 400;
 }
 .plcn-btn-link:hover {
-    color: #fff;
+    color: var(--plcn-fg, #fff);
 }
 
 .plcn-btn:focus-visible {
-    outline: 2px solid #fff;
+    outline: 2px solid var(--plcn-fg, #fff);
     outline-offset: 2px;
 }
 

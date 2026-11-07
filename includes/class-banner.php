@@ -192,13 +192,14 @@ gtag('consent','default',{
 
         $bg_color     = $options['bg_color'] ?? '#111';
         $button_color = $options['button_color'] ?? '#ffb25d';
+        $text_color   = $options['text_color'] ?? '#fff';
         $position     = $options['position'] ?? 'bottom';
         $compliance   = $options['compliance_mode'] ?? 'none';
         $theme        = in_array( $options['theme'] ?? 'light', array( 'light', 'dark', 'auto' ), true ) ? $options['theme'] : 'light';
         $privacy_url  = $options['privacy_policy_url'] ?? '';
 
         // Theme variables on :root.
-        echo '<style id="plcn-theme-vars">:root{--plcn-bg:' . esc_attr( $bg_color ) . ';--plcn-accent:' . esc_attr( $button_color ) . ';}</style>';
+        echo '<style id="plcn-theme-vars">:root{--plcn-bg:' . esc_attr( $bg_color ) . ';--plcn-fg:' . esc_attr( $text_color ) . ';--plcn-accent:' . esc_attr( $button_color ) . ';}</style>';
         echo '<script id="plcn-theme-attr">document.documentElement.setAttribute("data-plcn-theme","' . esc_js( $theme ) . '");</script>';
 
         $registry     = PLCN_Script_Registry::instance();
@@ -240,12 +241,12 @@ gtag('consent','default',{
         }
 
         $btn_style     = 'background:' . esc_attr( $button_color ) . ';color:' . esc_attr( $bg_color ) . ';';
-        $btn_alt_style = 'background:transparent;color:#fff;border:1px solid ' . esc_attr( $button_color ) . ';';
+        $btn_alt_style = 'background:transparent;color:' . esc_attr( $text_color ) . ';border:1px solid ' . esc_attr( $button_color ) . ';';
         ?>
 
         <div id="plcn-overlay-backdrop"></div>
 
-        <div id="plcn-banner" class="<?php echo esc_attr( $pos_class ); ?>" role="dialog" aria-modal="false" aria-live="polite" aria-label="<?php esc_attr_e( 'Cookie notice', 'perrylabs-cookie-notice' ); ?>" style="background:<?php echo esc_attr( $bg_color ); ?>;">
+        <div id="plcn-banner" class="<?php echo esc_attr( $pos_class ); ?>" role="dialog" aria-modal="false" aria-live="polite" aria-label="<?php esc_attr_e( 'Cookie notice', 'perrylabs-cookie-notice' ); ?>" style="background:<?php echo esc_attr( $bg_color ); ?>;color:<?php echo esc_attr( $text_color ); ?>;">
             <div class="plcn-banner-inner">
                 <div class="plcn-banner-text">
                     <?php if ( $banner_title ) : ?>

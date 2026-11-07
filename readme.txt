@@ -2,8 +2,8 @@
 Tags: cookies, consent, gdpr, ccpa, privacy, google consent mode, cookie banner
 Requires at least: 5.8
 Requires PHP: 7.4
-Stable tag: 3.4.1
-Tested up to: 6.8
+Stable tag: 3.5.0
+Tested up to: 7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,6 +82,23 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 6. Consent Log — audit trail of consent decisions.
 
 == Changelog ==
+
+= 3.5.0 =
+* Fix: banner bar colors now follow the configured palette instead of the theme defaults.
+* Fix: banner dismiss is more robust: a global `plcnDismiss()` fallback for inline handlers, direct per-button listeners alongside event delegation, a double-fire guard, and an `Element.closest` fallback for older browsers.
+* Fix: consent cookies are set with the `Secure` flag on HTTPS.
+
+= 3.4.3 =
+* Fix: "Cookie Settings" links, the preferences modal and embed "load" buttons did nothing for visitors who had already made a choice. Buttons are now wired up for every visitor.
+* Fix: closing the preferences modal no longer brings the banner back once a choice has been made.
+
+= 3.4.2 =
+* Fix: logged consent events from the banner recorded "required" as off; it is now always on, matching the REST endpoint.
+* Fix: the audit-log table is now created after code-deploy upgrades too, not only on activation (sites updated by git/Pantheon deploy could be missing it).
+* Fix: the consent audit log no longer drops events on full-page-cached sites (stale nonce for logged-out visitors).
+* Fix: the consent-recording endpoint now respects the Audit Log setting server-side.
+* Hardening: action and region values are whitelisted/normalised, and CSV exports neutralise spreadsheet formulas.
+* Tested up to WordPress 7.1.
 
 = 3.4.1 =
 * **Neutralized fresh-install metadata** so the plugin ships with no vendor-branded text by default. Plugin Name, Description, Author, and readme intro are neutral. The opt-in `show_branding` setting still surfaces a branded header/footer for site owners who want it.

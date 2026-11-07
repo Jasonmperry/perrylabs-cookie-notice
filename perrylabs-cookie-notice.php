@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Cookie Monster — Privacy & Consent
  * Description: Granular cookie consent with category-based opt-in, Google Consent Mode v2, script gating, geo-targeting, and a server-side audit log. No external dependencies.
- * Version: 3.4.2
+ * Version: 3.4.3
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Author: Cookie Monster
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PL_COOKIE_VERSION', '3.4.2' );
+define( 'PL_COOKIE_VERSION', '3.4.3' );
 define( 'PL_COOKIE_CODENAME', 'Cookie Monster' );
 define( 'PL_COOKIE_PLUGIN_FILE', __FILE__ );
 define( 'PL_COOKIE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );

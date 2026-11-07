@@ -2,7 +2,7 @@
 Tags: cookies, consent, gdpr, ccpa, privacy, google consent mode, cookie banner
 Requires at least: 5.8
 Requires PHP: 7.4
-Stable tag: 3.4.2
+Stable tag: 3.4.3
 Tested up to: 7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -82,6 +82,10 @@ Custom table `wp_plcn_consent_log` (prefix-aware). IP and user agent are SHA-256
 6. Consent Log — audit trail of consent decisions.
 
 == Changelog ==
+
+= 3.4.3 =
+* Fix: "Cookie Settings" links, the preferences modal and embed "load" buttons did nothing for visitors who had already made a choice. Buttons are now wired up for every visitor.
+* Fix: closing the preferences modal no longer brings the banner back once a choice has been made.
 
 = 3.4.2 =
 * Fix: logged consent events from the banner recorded "required" as off; it is now always on, matching the REST endpoint.

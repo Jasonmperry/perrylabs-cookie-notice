@@ -407,6 +407,11 @@
         var mode = getEffectiveMode(region);
         window._plcnEffectiveMode = mode;
 
+        // Wire up buttons first so "Cookie Settings" links, the preferences
+        // modal and embed buttons work for returning visitors too, not only
+        // for visitors who have not decided yet.
+        bindHandlers(mode, region);
+
         // DNT / GPC honored → treat as Reject All. Don't show banner; don't
         // load any optional scripts. Tell Google Consent Mode to deny.
         if (browserSaysNoTrack()) {
@@ -433,7 +438,16 @@
         }
 
         showBanner();
+    }
 
+    // Close the preferences modal. Only bring the banner back when the
+    // visitor still has not made a choice.
+    function closePreferences() {
+        hidePreferences();
+        if (!hasDecided()) showBanner();
+    }
+
+    function bindHandlers(mode, region) {
         var banner = $('plcn-banner');
         if (banner) {
             banner.addEventListener('click', function (e) {
@@ -452,18 +466,14 @@
                 if (action === 'save-preferences') {
                     handleSavePreferences(mode, region);
                 } else if (action === 'cancel-preferences') {
-                    hidePreferences();
-                    showBanner();
+                    closePreferences();
                 }
             });
         }
 
         var backdrop = $('plcn-overlay-backdrop');
         if (backdrop) {
-            backdrop.addEventListener('click', function () {
-                hidePreferences();
-                showBanner();
-            });
+            backdrop.addEventListener('click', closePreferences);
         }
 
         // Re-open preferences from external triggers (shortcode, menu link).
@@ -491,8 +501,7 @@
         // ESC + focus trap.
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && prefs && prefs.classList.contains('plcn-active')) {
-                hidePreferences();
-                showBanner();
+                closePreferences();
             }
             trapFocus(e);
         });
